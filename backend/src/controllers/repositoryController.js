@@ -1,7 +1,7 @@
 // controllers/repositoryController.js
 const GitHubService = require('../services/githubService');
 const AnalysisService = require('../services/analysisService');
-const supabase = require('../config/database');
+const pool = require('../config/database');
 
 class RepositoryController {
     constructor() {
@@ -21,11 +21,8 @@ class RepositoryController {
             console.log(`[RepositoryController] Analyzing repo: ${owner}/${repo} for user: ${userId}`);
 
             // Get user's GitHub token
-            const { data: user } = await supabase
-                .from('users')
-                .select('github_access_token')
-                .eq('id', userId)
-                .single();
+            const { rows } = await pool.query('SELECT github_access_token FROM users WHERE id = $1', [userId]);
+            const user = rows[0];
 
             if (!user) {
                 return res.status(404).json({ error: 'User not found' });

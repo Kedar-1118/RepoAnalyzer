@@ -19,7 +19,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@supabase/supabase-js": "^2.86.0",
     "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -29,6 +28,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
+    "pg": "^8.20.0",
     "winston": "^3.18.3"
   },
   "devDependencies": {

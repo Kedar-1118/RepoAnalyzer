@@ -1,6 +1,6 @@
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-const supabase = require('../config/database');
+const pool = require('../config/database');
 const githubConfig = require('../config/github');
 
 class AuthController {
@@ -9,7 +9,7 @@ class AuthController {
       const scope = githubConfig.scope.join(' ');
       const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${githubConfig.clientId}&scope=${scope}&redirect_uri=${githubConfig.callbackURL}`;
 
-      res.json({ authUrl: githubAuthUrl });
+      res.redirect(githubAuthUrl);
     } catch (error) {
       console.error('Error initiating GitHub auth:', error);
       res.status(500).json({ error: 'Failed to initiate GitHub authentication' });
@@ -59,59 +59,57 @@ class AuthController {
       console.log('GitHub user:', githubUser);
 
       // 3. Check existing user
-      const { data: existingUser, error: existingError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('github_id', githubUser.id.toString())
-        .maybeSingle();
+      const { rows: existingUsers } = await pool.query(
+        'SELECT * FROM users WHERE github_id = $1',
+        [githubUser.id.toString()]
+      );
 
-      if (existingError) {
-        console.error('Error checking existing user:', existingError);
-        throw existingError;
-      }
+      const existingUser = existingUsers[0];
 
       let user;
 
       if (existingUser) {
         // 4a. Update existing user
-        const { data: updatedUser, error: updateError } = await supabase
-          .from('users')
-          .update({
-            github_access_token: githubAccessToken,
-            github_username: githubUser.login,
-            github_email: githubUser.email,
-            avatar_url: githubUser.avatar_url,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('github_id', githubUser.id.toString())
-          .select()
-          .single();
+        const updateQuery = `
+          UPDATE users 
+          SET github_access_token = $1, 
+              github_username = $2, 
+              github_email = $3, 
+              avatar_url = $4, 
+              updated_at = $5 
+          WHERE github_id = $6 
+          RETURNING *
+        `;
+        const { rows: updatedUsers } = await pool.query(updateQuery, [
+          githubAccessToken,
+          githubUser.login,
+          githubUser.email,
+          githubUser.avatar_url,
+          new Date().toISOString(),
+          githubUser.id.toString()
+        ]);
 
-        if (updateError) {
-          console.error('Error updating user:', updateError);
-          throw updateError;
-        }
+        const updatedUser = updatedUsers[0];
 
         user = updatedUser;
       } else {
         // 4b. Insert new user
-        const { data: newUser, error: insertError } = await supabase
-          .from('users')
-          .insert({
-            github_id: githubUser.id.toString(),
-            github_username: githubUser.login,
-            github_email: githubUser.email,
-            github_access_token: githubAccessToken,
-            avatar_url: githubUser.avatar_url,
-            profile_data: {},
-          })
-          .select()
-          .single();
+        const insertQuery = `
+          INSERT INTO users 
+          (github_id, github_username, github_email, github_access_token, avatar_url, profile_data) 
+          VALUES ($1, $2, $3, $4, $5, $6) 
+          RETURNING *
+        `;
+        const { rows: newUsers } = await pool.query(insertQuery, [
+          githubUser.id.toString(),
+          githubUser.login,
+          githubUser.email,
+          githubAccessToken,
+          githubUser.avatar_url,
+          '{}'
+        ]);
 
-        if (insertError) {
-          console.error('Error inserting user:', insertError);
-          throw insertError;
-        }
+        const newUser = newUsers[0];
 
         user = newUser;
       }
@@ -171,11 +169,11 @@ class AuthController {
     try {
       const user = req.user;
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('id, github_id, github_username, github_email, avatar_url, created_at')
-        .eq('id', user.userId)
-        .single();
+      const { rows } = await pool.query(
+        'SELECT id, github_id, github_username, github_email, avatar_url, created_at FROM users WHERE id = $1',
+        [user.userId]
+      );
+      const userData = rows[0];
 
       res.json({ user: userData });
     } catch (error) {

@@ -1,4 +1,4 @@
-const supabase = require('../config/database');
+const pool = require('../config/database');
 const GitHubService = require('../services/githubService');
 const MatchService = require('../services/matchService');
 
@@ -24,11 +24,8 @@ class RecommendationController {
         refresh = false
       } = req.query;
 
-      const { data: user } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const { rows: userRows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      const user = userRows[0];
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
@@ -40,13 +37,10 @@ class RecommendationController {
       // Only use cache if no filters and not forcing refresh
       if (!refresh && !hasFilters) {
         console.log('[RecommendationController] Checking cache for user:', userId);
-        const { data: cachedRecommendations } = await supabase
-          .from('user_recommendations')
-          .select('*')
-          .eq('user_id', userId)
-          .gt('expires_at', new Date().toISOString())
-          .order('match_score', { ascending: false })
-          .limit(parseInt(limit));
+        const { rows: cachedRecommendations } = await pool.query(
+          'SELECT * FROM user_recommendations WHERE user_id = $1 AND expires_at > $2 ORDER BY match_score DESC LIMIT $3',
+          [userId, new Date().toISOString(), parseInt(limit)]
+        );
 
         if (cachedRecommendations && cachedRecommendations.length > 0) {
           console.log(`[RecommendationController] Returning ${cachedRecommendations.length} cached recommendations`);
@@ -125,14 +119,14 @@ class RecommendationController {
       }));
 
       if (recommendationsToCache.length > 0) {
-        await supabase
-          .from('user_recommendations')
-          .delete()
-          .eq('user_id', userId);
+        await pool.query('DELETE FROM user_recommendations WHERE user_id = $1', [userId]);
 
-        await supabase
-          .from('user_recommendations')
-          .insert(recommendationsToCache);
+        await Promise.all(recommendationsToCache.map(rec =>
+          pool.query(
+            'INSERT INTO user_recommendations (user_id, repo_full_name, match_score, recommendation_data, expires_at) VALUES ($1, $2, $3, $4, $5)',
+            [rec.user_id, rec.repo_full_name, rec.match_score, rec.recommendation_data, rec.expires_at]
+          )
+        ));
       }
 
       res.json({
@@ -173,11 +167,9 @@ class RecommendationController {
 
       console.log('[SearchController] Search request:', { userId, query, language, topics, minStars, sort, limit });
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('github_access_token')
-        .eq('id', userId)
-        .single();
+      const { rows: userRows } = await pool.query('SELECT github_access_token FROM users WHERE id = $1', [userId]);
+      const user = userRows[0];
+      const error = !user ? new Error('User not found') : null;
 
       if (error) {
         console.error('[SearchController] Supabase error:', error);

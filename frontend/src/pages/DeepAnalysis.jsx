@@ -1,602 +1,229 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import {
-    Brain,
-    Search,
-    Loader2,
-    AlertCircle,
-    Code,
-    TrendingUp,
-    Star,
-    GitFork,
-    Layers,
-    Shield,
-    Zap,
-    Target,
-    CheckCircle,
-    XCircle,
-    ChevronDown,
-    ChevronUp,
-    ExternalLink,
-    Clock,
-    Database,
-    Sparkles,
-} from 'lucide-react';
-import { analyzeService } from '../services/api';
-import { profileService } from '../services/api';
-import useThemeStore from '../store/themeStore';
+import { useState } from 'react';
+import { useAnalyzeRepo } from '../hooks/useApi';
+import Footer from '../components/Footer';
 
 const DeepAnalysis = () => {
-    const { theme } = useThemeStore();
-    const [searchParams] = useSearchParams();
-    const [repoUrl, setRepoUrl] = useState('');
-    const [useProfileSkills, setUseProfileSkills] = useState(true);
-    const [customSkills, setCustomSkills] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [result, setResult] = useState(null);
-    const [error, setError] = useState(null);
-    const [expandedSections, setExpandedSections] = useState({
-        summary: true,
-        architecture: true,
-        quality: true,
-        skills: true,
-        opportunities: true,
-        scoring: true,
-    });
+  const [repoUrl, setRepoUrl] = useState('');
+  const [skills, setSkills] = useState('');
+  const { mutate: analyze, data: analysis, isLoading } = useAnalyzeRepo();
 
-    const toggleSection = (section) => {
-        setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-    };
+  const handleAnalyze = (e) => {
+    e.preventDefault();
+    if (repoUrl) {
+      analyze({ repoUrl, skills });
+    }
+  };
 
-    // Pre-fill repo URL from query param (e.g. from RepoAnalysisModal link)
-    useEffect(() => {
-        const repoParam = searchParams.get('repo');
-        if (repoParam) {
-            setRepoUrl(repoParam);
-        }
-    }, [searchParams]);
+  return (
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full space-y-10">
+      {/* Search Section */}
+      {!analysis && (
+        <section className="relative py-10">
+          <div className="absolute -top-20 -right-20 w-80 h-80 bg-primary/10 blur-[100px] rounded-full pointer-events-none"></div>
+          <h1 className="text-5xl font-headline font-extrabold tracking-tighter text-on-surface mb-4">
+            Repository <span className="text-primary italic">Analysis</span>
+          </h1>
+          <p className="text-on-surface-variant text-lg mb-8 max-w-xl">
+            Enter a GitHub repository URL to trigger our RAG-powered deep analysis engine.
+          </p>
 
-    const handleAnalyze = async (e) => {
-        e.preventDefault();
-        setError(null);
-        setResult(null);
-        setIsLoading(true);
-
-        try {
-            let skills = customSkills;
-            if (useProfileSkills) {
-                try {
-                    const techStack = await profileService.getTechStack();
-                    const profileSkills = techStack?.techStack
-                        ?.map((t) => t.name || t)
-                        .join(', ');
-                    if (profileSkills) {
-                        skills = skills
-                            ? `${profileSkills}, ${skills}`
-                            : profileSkills;
-                    }
-                } catch {
-                    // Profile skills unavailable — continue with custom only
-                }
-            }
-
-            const data = await analyzeService.analyzeRepo(repoUrl, skills);
-            setResult(data);
-        } catch (err) {
-            setError(
-                err.response?.data?.detail ||
-                    err.response?.data?.error ||
-                    err.message ||
-                    'Analysis failed'
-            );
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const getScoreColor = (score) => {
-        if (score >= 80) return 'text-green-500';
-        if (score >= 60) return 'text-blue-500';
-        if (score >= 40) return 'text-yellow-500';
-        return 'text-red-500';
-    };
-
-    const getScoreBg = (score) => {
-        if (score >= 80) return 'bg-green-500/10 border-green-500/30';
-        if (score >= 60) return 'bg-blue-500/10 border-blue-500/30';
-        if (score >= 40) return 'bg-yellow-500/10 border-yellow-500/30';
-        return 'bg-red-500/10 border-red-500/30';
-    };
-
-    const getComplexityBadge = (level) => {
-        const map = {
-            low: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-            medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-            high: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-        };
-        return map[level?.toLowerCase()] || map.medium;
-    };
-
-    return (
-        <div className="min-h-screen bg-light-bg dark:bg-dark-bg p-4 sm:p-6 lg:p-8">
-            <div className="max-w-5xl mx-auto">
-                {/* Header */}
-                <div className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg">
-                            <Brain className="w-7 h-7 text-white" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl sm:text-3xl font-bold text-light-text dark:text-dark-text">
-                                Deep Analysis
-                            </h1>
-                            <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                                AI-powered repository analysis using RAG pipeline
-                            </p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Input Form */}
-                <form onSubmit={handleAnalyze} className="card p-6 mb-6">
-                    <div className="space-y-4">
-                        {/* Repo URL */}
-                        <div>
-                            <label
-                                htmlFor="deep-analysis-repo-url"
-                                className="block text-sm font-medium text-light-text dark:text-dark-text mb-2"
-                            >
-                                GitHub Repository URL
-                            </label>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary" />
-                                <input
-                                    id="deep-analysis-repo-url"
-                                    type="url"
-                                    value={repoUrl}
-                                    onChange={(e) => setRepoUrl(e.target.value)}
-                                    placeholder="https://github.com/owner/repo"
-                                    className="w-full pl-11 pr-4 py-3 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder-light-text-secondary dark:placeholder-dark-text-secondary focus:ring-2 focus:ring-light-accent dark:focus:ring-dark-primary focus:border-transparent transition-all"
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        {/* Skills Options */}
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={useProfileSkills}
-                                    onChange={(e) =>
-                                        setUseProfileSkills(e.target.checked)
-                                    }
-                                    className="w-4 h-4 rounded text-light-accent dark:text-dark-primary"
-                                />
-                                <span className="text-sm text-light-text dark:text-dark-text">
-                                    Include skills from my profile
-                                </span>
-                            </label>
-                            <div className="flex-1">
-                                <input
-                                    type="text"
-                                    value={customSkills}
-                                    onChange={(e) =>
-                                        setCustomSkills(e.target.value)
-                                    }
-                                    placeholder="Add custom skills (e.g. React, Python, Docker)"
-                                    className="w-full px-4 py-2 rounded-lg bg-light-bg dark:bg-dark-bg border border-light-border dark:border-dark-border text-light-text dark:text-dark-text placeholder-light-text-secondary dark:placeholder-dark-text-secondary text-sm"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Submit */}
-                        <button
-                            id="deep-analysis-submit"
-                            type="submit"
-                            disabled={isLoading || !repoUrl.trim()}
-                            className="w-full sm:w-auto px-6 py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
-                        >
-                            {isLoading ? (
-                                <>
-                                    <Loader2 className="w-5 h-5 animate-spin" />
-                                    Analyzing… (this may take 1-3 minutes)
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles className="w-5 h-5" />
-                                    Run Deep Analysis
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </form>
-
-                {/* Error */}
-                {error && (
-                    <div className="card p-4 mb-6 bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800">
-                        <div className="flex items-start gap-3">
-                            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                                <p className="font-medium text-red-800 dark:text-red-200">
-                                    Analysis Failed
-                                </p>
-                                <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                                    {error}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Loading Skeleton */}
-                {isLoading && (
-                    <div className="space-y-4 animate-pulse">
-                        {[1, 2, 3].map((i) => (
-                            <div
-                                key={i}
-                                className="card p-6 space-y-3"
-                            >
-                                <div className="h-5 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded w-1/3"></div>
-                                <div className="h-4 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded w-full"></div>
-                                <div className="h-4 bg-light-bg-secondary dark:bg-dark-bg-secondary rounded w-2/3"></div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Results */}
-                {result && !isLoading && (
-                    <div className="space-y-4">
-                        {/* Meta bar */}
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                            <span className="flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5" />
-                                {result.processing_time_seconds}s
-                            </span>
-                            {result.from_cache && (
-                                <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                                    <Database className="w-3.5 h-3.5" />
-                                    Cached
-                                </span>
-                            )}
-                        </div>
-
-                        {/* Score Cards */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <ScoreCard
-                                icon={Star}
-                                label="Repository Score"
-                                score={result.repository_score}
-                            />
-                            <ScoreCard
-                                icon={Shield}
-                                label="Code Quality"
-                                score={result.code_quality_score}
-                            />
-                            <ScoreCard
-                                icon={Target}
-                                label="Skill Match"
-                                score={result.skill_match_score}
-                            />
-                            <ScoreCard
-                                icon={TrendingUp}
-                                label="Developer Score"
-                                score={result.developer_technical_score}
-                            />
-                        </div>
-
-                        {/* Summary Section */}
-                        <CollapsibleSection
-                            title="Repository Summary"
-                            icon={<Layers className="w-5 h-5" />}
-                            isOpen={expandedSections.summary}
-                            onToggle={() => toggleSection('summary')}
-                        >
-                            <p className="text-light-text dark:text-dark-text leading-relaxed">
-                                {result.repository_summary}
-                            </p>
-
-                            {/* Tech Stack */}
-                            {result.technology_stack?.length > 0 && (
-                                <div className="mt-4">
-                                    <h4 className="text-sm font-semibold text-light-text-secondary dark:text-dark-text-secondary mb-2">
-                                        Technology Stack
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                        {result.technology_stack.map(
-                                            (tech, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-3 py-1 text-sm rounded-full bg-light-accent/10 text-light-accent dark:bg-dark-primary/10 dark:text-dark-primary"
-                                                >
-                                                    {tech}
-                                                </span>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {result.complexity_level && (
-                                <div className="mt-3">
-                                    <span
-                                        className={`inline-block px-3 py-1 text-sm rounded-full font-medium ${getComplexityBadge(
-                                            result.complexity_level
-                                        )}`}
-                                    >
-                                        Complexity: {result.complexity_level}
-                                    </span>
-                                </div>
-                            )}
-                        </CollapsibleSection>
-
-                        {/* Architecture Section */}
-                        <CollapsibleSection
-                            title={`Architecture: ${result.architecture_pattern || 'N/A'}`}
-                            icon={<Code className="w-5 h-5" />}
-                            isOpen={expandedSections.architecture}
-                            onToggle={() => toggleSection('architecture')}
-                        >
-                            <p className="text-light-text dark:text-dark-text leading-relaxed">
-                                {result.architecture_explanation}
-                            </p>
-                        </CollapsibleSection>
-
-                        {/* Code Quality Section */}
-                        <CollapsibleSection
-                            title="Code Quality"
-                            icon={<Shield className="w-5 h-5" />}
-                            isOpen={expandedSections.quality}
-                            onToggle={() => toggleSection('quality')}
-                        >
-                            <div className="flex items-center gap-4 mb-3">
-                                <div
-                                    className={`text-3xl font-bold ${getScoreColor(
-                                        result.code_quality_score
-                                    )}`}
-                                >
-                                    {result.code_quality_score}
-                                    <span className="text-sm font-normal text-light-text-secondary dark:text-dark-text-secondary">
-                                        /100
-                                    </span>
-                                </div>
-                            </div>
-                            <p className="text-light-text dark:text-dark-text leading-relaxed">
-                                {result.code_quality_explanation}
-                            </p>
-                        </CollapsibleSection>
-
-                        {/* Required Skills / Skill Match */}
-                        <CollapsibleSection
-                            title="Required Skills & Match"
-                            icon={<Target className="w-5 h-5" />}
-                            isOpen={expandedSections.skills}
-                            onToggle={() => toggleSection('skills')}
-                        >
-                            {result.required_skills?.length > 0 && (
-                                <div className="mb-4">
-                                    <div className="flex flex-wrap gap-2">
-                                        {result.required_skills.map(
-                                            (skill, i) => (
-                                                <span
-                                                    key={i}
-                                                    className="px-3 py-1 text-sm rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                                                >
-                                                    {skill}
-                                                </span>
-                                            )
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {result.skill_match_score > 0 && (
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className={`text-2xl font-bold ${getScoreColor(
-                                            result.skill_match_score
-                                        )}`}
-                                    >
-                                        {result.skill_match_score}%
-                                    </div>
-                                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                                        {result.skill_match_explanation}
-                                    </p>
-                                </div>
-                            )}
-                        </CollapsibleSection>
-
-                        {/* Contribution Opportunities */}
-                        {result.contribution_opportunities?.length > 0 && (
-                            <CollapsibleSection
-                                title="Contribution Opportunities"
-                                icon={<Zap className="w-5 h-5" />}
-                                isOpen={expandedSections.opportunities}
-                                onToggle={() =>
-                                    toggleSection('opportunities')
-                                }
-                            >
-                                <div className="space-y-3">
-                                    {result.contribution_opportunities.map(
-                                        (opp, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex items-start gap-3 p-3 rounded-lg bg-light-bg dark:bg-dark-bg"
-                                            >
-                                                <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                                                <span className="text-light-text dark:text-dark-text">
-                                                    {typeof opp === 'string'
-                                                        ? opp
-                                                        : opp.description ||
-                                                          opp.title ||
-                                                          JSON.stringify(opp)}
-                                                </span>
-                                            </div>
-                                        )
-                                    )}
-                                </div>
-                            </CollapsibleSection>
-                        )}
-
-                        {/* Scoring Breakdown */}
-                        {result.repository_scoring_breakdown &&
-                            Object.keys(result.repository_scoring_breakdown)
-                                .length > 0 && (
-                                <CollapsibleSection
-                                    title="Scoring Breakdown"
-                                    icon={<TrendingUp className="w-5 h-5" />}
-                                    isOpen={expandedSections.scoring}
-                                    onToggle={() => toggleSection('scoring')}
-                                >
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                        {Object.entries(
-                                            result.repository_scoring_breakdown
-                                        ).map(([key, value]) => (
-                                            <div
-                                                key={key}
-                                                className={`p-3 rounded-lg border ${getScoreBg(
-                                                    typeof value === 'number'
-                                                        ? value
-                                                        : 50
-                                                )}`}
-                                            >
-                                                <p className="text-xs text-light-text-secondary dark:text-dark-text-secondary mb-1 capitalize">
-                                                    {key.replace(/_/g, ' ')}
-                                                </p>
-                                                <p
-                                                    className={`text-lg font-bold ${getScoreColor(
-                                                        typeof value ===
-                                                            'number'
-                                                            ? value
-                                                            : 50
-                                                    )}`}
-                                                >
-                                                    {typeof value === 'number'
-                                                        ? value
-                                                        : JSON.stringify(value)}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </CollapsibleSection>
-                            )}
-
-                        {/* Full Analysis Explanation */}
-                        {result.analysis_explanation && (
-                            <div className="card p-6">
-                                <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-3 flex items-center gap-2">
-                                    <Brain className="w-5 h-5 text-purple-500" />
-                                    Full Analysis
-                                </h3>
-                                <p className="text-light-text dark:text-dark-text leading-relaxed whitespace-pre-line">
-                                    {result.analysis_explanation}
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Metadata */}
-                        {result.metadata && (
-                            <div className="card p-4 text-sm">
-                                <div className="flex flex-wrap gap-4 text-light-text-secondary dark:text-dark-text-secondary">
-                                    {result.metadata.repo_owner && (
-                                        <a
-                                            href={`https://github.com/${result.metadata.repo_owner}/${result.metadata.repo_name}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-1 hover:text-light-accent dark:hover:text-dark-primary transition-colors"
-                                        >
-                                            <ExternalLink className="w-4 h-4" />
-                                            {result.metadata.repo_owner}/
-                                            {result.metadata.repo_name}
-                                        </a>
-                                    )}
-                                    {result.metadata.stars !== undefined && (
-                                        <span className="flex items-center gap-1">
-                                            <Star className="w-4 h-4" />
-                                            {result.metadata.stars?.toLocaleString()}
-                                        </span>
-                                    )}
-                                    {result.metadata.forks !== undefined && (
-                                        <span className="flex items-center gap-1">
-                                            <GitFork className="w-4 h-4" />
-                                            {result.metadata.forks?.toLocaleString()}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-
-// === Sub-components ===
-
-const ScoreCard = ({ icon: Icon, label, score }) => {
-    const getColor = (s) => {
-        if (s >= 80)
-            return 'from-green-500/20 to-green-600/10 border-green-500/30';
-        if (s >= 60)
-            return 'from-blue-500/20 to-blue-600/10 border-blue-500/30';
-        if (s >= 40)
-            return 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30';
-        return 'from-red-500/20 to-red-600/10 border-red-500/30';
-    };
-    const getTextColor = (s) => {
-        if (s >= 80) return 'text-green-600 dark:text-green-400';
-        if (s >= 60) return 'text-blue-600 dark:text-blue-400';
-        if (s >= 40) return 'text-yellow-600 dark:text-yellow-400';
-        return 'text-red-600 dark:text-red-400';
-    };
-
-    return (
-        <div
-            className={`p-4 rounded-xl border bg-gradient-to-br ${getColor(
-                score
-            )}`}
-        >
-            <div className="flex items-center gap-2 mb-2">
-                <Icon
-                    className={`w-4 h-4 ${getTextColor(score)}`}
+          <form onSubmit={handleAnalyze} className="space-y-4 max-w-2xl">
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/20 to-tertiary/20 rounded-[1rem] blur opacity-75 group-focus-within:opacity-100 transition duration-500"></div>
+              <div className="relative bg-surface-container-low rounded-[1rem] p-1">
+                <input
+                  type="text"
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  placeholder="https://github.com/owner/repository"
+                  className="w-full bg-transparent border-0 focus:ring-0 text-on-surface placeholder-slate-600 font-label text-sm px-6 py-4"
                 />
-                <span className="text-xs font-medium text-light-text-secondary dark:text-dark-text-secondary">
-                    {label}
-                </span>
+              </div>
             </div>
-            <p className={`text-2xl font-bold ${getTextColor(score)}`}>
-                {typeof score === 'number' ? Math.round(score) : score || 0}
-            </p>
-        </div>
-    );
-};
-
-const CollapsibleSection = ({ title, icon, isOpen, onToggle, children }) => {
-    return (
-        <div className="card overflow-hidden">
+            <div className="relative bg-surface-container-low rounded-[1rem]">
+              <input
+                type="text"
+                value={skills}
+                onChange={(e) => setSkills(e.target.value)}
+                placeholder="Your skills (optional): React, Python, Rust..."
+                className="w-full bg-transparent border-0 focus:ring-0 text-on-surface placeholder-slate-600 font-label text-sm px-6 py-4 rounded-[1rem]"
+              />
+            </div>
             <button
-                onClick={onToggle}
-                className="w-full flex items-center justify-between p-4 sm:p-6 text-left hover:bg-light-bg-secondary/50 dark:hover:bg-dark-bg-tertiary/50 transition-colors"
+              type="submit"
+              disabled={isLoading || !repoUrl}
+              className="px-8 py-4 rounded-full font-bold text-sm flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50 disabled:hover:scale-100"
+              style={{ background: 'linear-gradient(135deg, #8d98ff 0%, #af5cfe 100%)', color: '#000' }}
             >
-                <div className="flex items-center gap-3">
-                    <span className="text-light-accent dark:text-dark-primary">
-                        {icon}
-                    </span>
-                    <h3 className="text-lg font-semibold text-light-text dark:text-dark-text">
-                        {title}
-                    </h3>
-                </div>
-                {isOpen ? (
-                    <ChevronUp className="w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary" />
-                ) : (
-                    <ChevronDown className="w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary" />
-                )}
+              {isLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-lg">rocket_launch</span>
+                  Start Analysis
+                </>
+              )}
             </button>
-            {isOpen && <div className="px-4 pb-4 sm:px-6 sm:pb-6">{children}</div>}
-        </div>
-    );
+          </form>
+        </section>
+      )}
+
+      {/* Analysis Results */}
+      {analysis && (
+        <>
+          {/* Repository Header Bento */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 glass-card p-8 rounded-[1rem] flex flex-col justify-between relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600/10 blur-[100px] -z-10"></div>
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase">Open Source</span>
+                  <span className="text-slate-500 text-sm">{analysis.metadata?.repo_owner}/{analysis.metadata?.repo_name}</span>
+                </div>
+                <h2 className="text-4xl lg:text-5xl font-black font-headline tracking-tighter mb-6 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+                  {analysis.metadata?.repo_name || 'Repository'}
+                </h2>
+                <p className="text-slate-400 max-w-xl leading-relaxed mb-8">
+                  {analysis.repository_summary}
+                </p>
+              </div>
+              <div className="flex items-center gap-6">
+                <a
+                  href={`https://github.com/${analysis.metadata?.repo_owner}/${analysis.metadata?.repo_name}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-8 py-3 rounded-full font-bold shadow-lg shadow-indigo-500/20 hover:scale-105 transition-transform text-sm"
+                  style={{ background: 'linear-gradient(135deg, #8d98ff 0%, #af5cfe 100%)', color: '#000' }}
+                >
+                  View on GitHub
+                </a>
+                <div className="flex gap-4 items-center text-slate-400 text-sm">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-yellow-500 text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                    <span className="font-bold text-white">{analysis.metadata?.stars?.toLocaleString() || '—'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-slate-400 text-lg">fork_right</span>
+                    <span className="font-bold text-white">{analysis.metadata?.forks?.toLocaleString() || '—'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Code Quality Score */}
+            <div className="bg-surface-container-low p-8 rounded-[1rem] flex flex-col items-center justify-center text-center">
+              <h3 className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-6">Code Quality Score</h3>
+              <div className="relative w-40 h-40 flex items-center justify-center">
+                <svg className="w-full h-full -rotate-90">
+                  <circle className="text-slate-800" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="8" />
+                  <circle className="text-indigo-500" cx="80" cy="80" r="70" fill="transparent" stroke="currentColor" strokeWidth="10" strokeLinecap="round"
+                    strokeDasharray="440"
+                    strokeDashoffset={440 - (440 * (analysis.code_quality_score || 0) / 100)}
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center">
+                  <span className="text-4xl font-black font-headline text-white">{Math.round(analysis.code_quality_score || 0)}</span>
+                  <span className="text-[10px] text-indigo-400 font-bold uppercase">
+                    {analysis.code_quality_score >= 80 ? 'Exceptional' : analysis.code_quality_score >= 60 ? 'Good' : 'Needs Work'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Insights & Tech Stack */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            {/* AI Health Analysis */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-tertiary">bolt</span>
+                <h3 className="text-xl font-bold font-headline">AI Health Analysis</h3>
+              </div>
+              <div className="bg-surface-container-lowest p-8 rounded-[1rem] border border-white/5 space-y-4">
+                <p className="text-slate-300 leading-relaxed italic">
+                  "{analysis.analysis_explanation || analysis.code_quality_explanation || 'Analysis data not available.'}"
+                </p>
+                <div className="grid grid-cols-2 gap-4 mt-6">
+                  <div className="p-4 bg-surface-container-low rounded-[0.75rem]">
+                    <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Architecture</span>
+                    <span className="text-emerald-400 font-bold">{analysis.architecture_pattern || 'N/A'}</span>
+                  </div>
+                  <div className="p-4 bg-surface-container-low rounded-[0.75rem]">
+                    <span className="block text-[10px] text-slate-500 uppercase font-bold mb-1">Complexity</span>
+                    <span className="text-tertiary font-bold">{analysis.complexity_level || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tech Stack */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-secondary">category</span>
+                <h3 className="text-xl font-bold font-headline">Tech Stack</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {(analysis.technology_stack || []).map((tech, i) => (
+                  <div key={i} className="bg-surface-container-high p-4 rounded-[1rem] flex flex-col items-center gap-2 hover:bg-surface-bright transition-colors">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${i % 3 === 0 ? 'bg-orange-500/20' : i % 3 === 1 ? 'bg-indigo-500/20' : 'bg-purple-500/20'}`}>
+                      <span className={`material-symbols-outlined ${i % 3 === 0 ? 'text-orange-500' : i % 3 === 1 ? 'text-indigo-400' : 'text-purple-400'}`}>code</span>
+                    </div>
+                    <span className="text-xs font-bold text-center">{tech}</span>
+                  </div>
+                ))}
+                {(analysis.technology_stack || []).length === 0 && (
+                  <p className="col-span-3 text-on-surface-variant text-sm">No tech stack data available.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Contribution Opportunities */}
+          {analysis.contribution_opportunities?.length > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-emerald-400">volunteer_activism</span>
+                <h3 className="text-xl font-bold font-headline">Contribution Opportunities</h3>
+              </div>
+              <div className="space-y-4">
+                {analysis.contribution_opportunities.map((opp, i) => (
+                  <div key={i} className={`bg-surface-container-low hover:bg-surface-container-high p-6 rounded-[1rem] transition-all border-l-4 ${i % 2 === 0 ? 'border-indigo-500' : 'border-purple-500'} flex items-center justify-between group`}>
+                    <div className="space-y-1">
+                      <span className={`text-[10px] font-bold uppercase tracking-widest ${i % 2 === 0 ? 'text-indigo-400' : 'text-purple-400'}`}>
+                        {typeof opp === 'string' ? 'Opportunity' : opp.type || 'Contribution'}
+                      </span>
+                      <h4 className="text-lg font-bold text-white group-hover:text-indigo-300 transition-colors">
+                        {typeof opp === 'string' ? opp : opp.title || opp.description}
+                      </h4>
+                    </div>
+                    <button className={`${i % 2 === 0 ? 'text-indigo-400' : 'text-purple-400'} font-bold text-sm flex items-center gap-2 hover:gap-3 transition-all`}>
+                      Claim Task <span className="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* New Analysis Button */}
+          <div className="text-center pt-8">
+            <button
+              onClick={() => { setRepoUrl(''); setSkills(''); }}
+              className="px-8 py-3 bg-surface-container-high hover:bg-surface-bright text-primary rounded-full font-bold transition-all flex items-center gap-2 mx-auto"
+            >
+              <span className="material-symbols-outlined">refresh</span>
+              Analyze Another Repository
+            </button>
+          </div>
+        </>
+      )}
+
+      <Footer />
+    </div>
+  );
 };
 
 export default DeepAnalysis;

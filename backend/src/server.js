@@ -8,8 +8,7 @@ const requiredEnvVars = [
   'GITHUB_CLIENT_ID',
   'GITHUB_CLIENT_SECRET',
   'GITHUB_CALLBACK_URL',
-  'SUPABASE_URL',
-  'SUPABASE_ANON_KEY'
+  'supabase_URL'
 ];
 
 const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);

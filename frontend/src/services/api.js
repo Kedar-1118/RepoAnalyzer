@@ -187,3 +187,42 @@ export const analyzeService = {
     },
 };
 
+export const bulkAnalysisService = {
+    // Start a new batch analysis
+    startBatch: async (usernames, batchName = '') => {
+        const response = await apiClient.post('/bulk-analysis/start', { usernames, batchName });
+        return response.data;
+    },
+
+    // Get all batches
+    getBatches: async () => {
+        const response = await apiClient.get('/bulk-analysis/batches');
+        return response.data;
+    },
+
+    // Get batch detail with candidates
+    getBatch: async (batchId) => {
+        const response = await apiClient.get(`/bulk-analysis/batch/${batchId}`);
+        return response.data;
+    },
+
+    // Export batch results
+    exportBatch: async (batchId) => {
+        const response = await apiClient.get(`/bulk-analysis/batch/${batchId}/export`);
+        return response.data;
+    },
+};
+
+export const candidateService = {
+    // Get full candidate profile analysis
+    getCandidate: async (username) => {
+        const response = await apiClient.get(`/candidates/${username}`);
+        return response.data;
+    },
+
+    // Trigger deep AI analysis
+    analyzeCandidate: async (username) => {
+        const response = await apiClient.post(`/candidates/${username}/analyze`);
+        return response.data;
+    },
+};

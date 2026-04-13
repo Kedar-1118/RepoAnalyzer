@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import useAuthStore from './store/authStore';
-import useThemeStore from './store/themeStore';
 
 // Pages
 import Landing from './pages/Landing';
@@ -15,18 +14,21 @@ import Saved from './pages/Saved';
 import History from './pages/History';
 import Issues from './pages/Issues';
 import DeepAnalysis from './pages/DeepAnalysis';
+import BulkAnalysis from './pages/BulkAnalysis';
+import Candidates from './pages/Candidates';
+import CandidateDetail from './pages/CandidateDetail';
 
-// Components
-import Navbar from './components/Navbar';
+// Layout Components
+import AppLayout from './components/AppLayout';
 import Toast from './components/Toast';
 
-// Create a client
+// Create query client
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
@@ -34,93 +36,37 @@ const queryClient = new QueryClient({
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
-  return children;
+  return <AppLayout>{children}</AppLayout>;
 };
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-light-bg dark:bg-dark-bg text-light-text dark:text-dark-text">
-          <Navbar />
+        <div className="min-h-screen bg-surface text-on-surface">
           <Routes>
-            {/* Public Routes */}
+            {/* Public Routes — no sidebar */}
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protected Routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/recommendations"
-              element={
-                <ProtectedRoute>
-                  <Recommendations />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/search"
-              element={
-                <ProtectedRoute>
-                  <Search />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/saved"
-              element={
-                <ProtectedRoute>
-                  <Saved />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <History />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/issues"
-              element={
-                <ProtectedRoute>
-                  <Issues />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/deep-analysis"
-              element={
-                <ProtectedRoute>
-                  <DeepAnalysis />
-                </ProtectedRoute>
-              }
-            />
+            {/* Protected Routes — sidebar + topbar layout */}
+            <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+            <Route path="/recommendations" element={<ProtectedRoute><Recommendations /></ProtectedRoute>} />
+            <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+            <Route path="/saved" element={<ProtectedRoute><Saved /></ProtectedRoute>} />
+            <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
+            <Route path="/issues" element={<ProtectedRoute><Issues /></ProtectedRoute>} />
+            <Route path="/deep-analysis" element={<ProtectedRoute><DeepAnalysis /></ProtectedRoute>} />
+            <Route path="/bulk-analysis" element={<ProtectedRoute><BulkAnalysis /></ProtectedRoute>} />
+            <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} />
+            <Route path="/candidates/:username" element={<ProtectedRoute><CandidateDetail /></ProtectedRoute>} />
 
-            {/* Default Route */}
+            {/* Default */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           <Toast />

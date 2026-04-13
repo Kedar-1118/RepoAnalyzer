@@ -9,7 +9,7 @@
 
 # Windows
 Thumbs.db
-
+/stitch_open_source_dev_dashboard
 # Root level node_modules (just in case)
 node_modules/
 npm-debug.log*

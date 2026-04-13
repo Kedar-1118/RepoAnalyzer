@@ -1,18 +1,14 @@
-const { createClient } = require('@supabase/supabase-js');
+const { Pool } = require('pg');
 
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const connectionString = process.env.supabase_URL || process.env.SUPABASE_URL;
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Missing Supabase environment variables (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY required)');
+if (!connectionString) {
+  throw new Error('Missing database connection string (supabase_URL required)');
 }
 
-// Use service role key for backend operations to bypass RLS
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false
-  }
+const pool = new Pool({
+  connectionString,
+  ssl: { rejectUnauthorized: false }
 });
 
-module.exports = supabase;
+module.exports = pool;

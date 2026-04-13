@@ -1,283 +1,174 @@
-import {
-    BarChart, Bar, PieChart, Pie, LineChart, Line,
-    RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-    XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell
-} from 'recharts';
-import {
-    GitBranch, Star, GitFork, TrendingUp, Code,
-    Calendar, Award, Activity
-} from 'lucide-react';
-import { useProfileSummary, useProfileStats, useProfileRepos, useProfileContributions } from '../hooks/useApi';
-import useThemeStore from '../store/themeStore';
-import LanguagePieChart from '../components/LanguagePieChart';
+import { useProfile, useRecommendations } from '../hooks/useApi';
+import StatsCard from '../components/StatsCard';
+import Footer from '../components/Footer';
 
 const Dashboard = () => {
-    const { data: summaryData, isLoading: summaryLoading } = useProfileSummary();
-    const { data: statsData, isLoading: statsLoading } = useProfileStats();
-    const { data: reposData, isLoading: reposLoading } = useProfileRepos();
-    const { data: contributionsApiData, isLoading: contributionsLoading } = useProfileContributions();
-    const { theme } = useThemeStore();
+  const { data: profile, isLoading: profileLoading } = useProfile();
+  const { data: recsData, isLoading: recsLoading } = useRecommendations();
+  const recommendations = recsData?.recommendations || recsData || [];
 
-    // Extract actual data from API responses
-    const summary = summaryData?.profile;
-    const stats = statsData?.stats;
-    const repos = reposData?.repositories;
+  const recentMatches = recommendations.slice(0, 6);
+  const skills = profile?.skills || profile?.tech_stack || [];
 
-    const isLoading = summaryLoading || statsLoading || reposLoading || contributionsLoading;
+  return (
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full space-y-10">
+      {/* Hero Header */}
+      <section className="relative">
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-primary/10 blur-[100px] rounded-full pointer-events-none"></div>
+        <h1 className="text-5xl font-headline font-extrabold tracking-tighter text-on-surface mb-2">
+          System Synthesis
+        </h1>
+        <p className="text-on-surface-variant text-lg font-body">
+          Architectural Overview & Global Connectivity
+        </p>
+      </section>
 
-    // Chart colors - Diverse palette for better visual distinction
-    const COLORS = theme === 'dark'
-        ? [
-            '#4f9eff',  // Bright Blue
-            '#39ff14',  // Neon Green
-            '#ff6b35',  // Vibrant Orange
-            '#a855f7',  // Purple
-            '#ec4899',  // Pink
-            '#14b8a6',  // Teal
-            '#f43f5e',  // Red
-            '#fbbf24',  // Yellow
-        ]
-        : [
-            '#0969da',  // Blue
-            '#1a7f37',  // Green
-            '#fb8500',  // Orange
-            '#8250df',  // Purple
-            '#cf222e',  // Red
-            '#0891b2',  // Teal
-            '#d946ef',  // Magenta
-            '#ca8a04',  // Gold
-        ];
+      {/* Stats Grid */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatsCard icon="monitor_heart" label="Health Score" value={profile ? '94.2' : '--'} trend="+2.1%" iconColorClass="text-secondary" bgColorClass="bg-secondary/10" />
+        <StatsCard icon="handshake" label="Active Matches" value={recommendations.length} trend="+12" iconColorClass="text-primary" bgColorClass="bg-primary/10" />
+        <StatsCard icon="code" label="Code Coverage" value="88%" iconColorClass="text-tertiary" bgColorClass="bg-tertiary/10" />
+        <StatsCard icon="hub" label="Network Nodes" value={profile?.public_repos || 0} iconColorClass="text-primary-dim" bgColorClass="bg-primary-dim/10" />
+      </section>
 
-    // Transform tech stack data for charts
-    const skillsData = summary?.techStack?.map(item => ({
-        skill: item.language,
-        value: summary?.skillStrength?.[item.language] || 50
-    })) || [];
-
-    const languagesData = summary?.techStack?.map(item => ({
-        name: item.language,
-        value: parseInt(item.percentage) || 0
-    })) || [];
-
-    // Transform real contributions data for chart
-    const contributionsData = (() => {
-        if (!contributionsApiData?.contributions) return [];
-
-        const contributionsMap = contributionsApiData.contributions;
-        const monthlyData = {};
-
-        // Aggregate contributions by month
-        Object.keys(contributionsMap).forEach(dateStr => {
-            const date = new Date(dateStr);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            monthlyData[monthKey] = (monthlyData[monthKey] || 0) + (contributionsMap[dateStr] || 0);
-        });
-
-        // Get last 12 months
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const now = new Date();
-        const result = [];
-
-        for (let i = 11; i >= 0; i--) {
-            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            result.push({
-                month: months[date.getMonth()],
-                commits: monthlyData[monthKey] || 0
-            });
-        }
-
-        return result;
-    })();
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="spinner"></div>
+      {/* Main Content Grid */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Recent Synchronizations */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary">sync</span>
+              <h2 className="text-xl font-headline font-bold">Recent Synchronizations</h2>
             </div>
-        );
-    }
+            <button className="text-xs text-primary font-bold uppercase tracking-widest hover:underline font-label">
+              View All
+            </button>
+          </div>
 
-    return (
-        <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg">
-            <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-                {/* Header */}
-                <div>
-                    <h1 className="text-3xl font-bold text-light-text dark:text-dark-text mb-2">
-                        Welcome back, <span className="dark:text-dark-primary">{summary?.username || 'Developer'}</span>! 👋
-                    </h1>
-                    <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                        Here's your open-source contribution overview
-                    </p>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <StatCard
-                        icon={GitBranch}
-                        label="Public Repos"
-                        value={summary?.totalRepos || 0}
-                        color="text-light-accent dark:text-dark-primary"
-                    />
-                    <StatCard
-                        icon={Star}
-                        label="Total Stars"
-                        value={summary?.totalStars || 0}
-                        color="text-yellow-500 dark:text-dark-primary"
-                    />
-                    <StatCard
-                        icon={GitFork}
-                        label="Total Forks"
-                        value={summary?.totalForks || 0}
-                        color="text-green-600 dark:text-dark-primary"
-                    />
-                    <StatCard
-                        icon={TrendingUp}
-                        label="Activity Score"
-                        value={summary?.activityScore?.score || 0}
-                        color="text-purple-600 dark:text-dark-accent"
-                    />
-                </div>
-
-                {/* Charts Row 1 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Skills Radar Chart */}
-                    <div className="card p-6">
-                        <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-4 flex items-center space-x-2">
-                            <Code className="w-5 h-5" />
-                            <span>Skill Distribution</span>
-                        </h3>
-                        <ResponsiveContainer width="100%" height={300}>
-                            <RadarChart data={skillsData}>
-                                <PolarGrid stroke={theme === 'dark' ? '#30363d' : '#d0d7de'} />
-                                <PolarAngleAxis
-                                    dataKey="skill"
-                                    tick={{ fill: theme === 'dark' ? '#8b949e' : '#57606a', fontSize: 12 }}
-                                />
-                                <PolarRadiusAxis
-                                    angle={90}
-                                    domain={[0, 100]}
-                                    tick={{ fill: theme === 'dark' ? '#8b949e' : '#57606a' }}
-                                />
-                                <Radar
-                                    name="Skills"
-                                    dataKey="value"
-                                    stroke={theme === 'dark' ? '#00ff41' : '#0969da'}
-                                    fill={theme === 'dark' ? '#00ff41' : '#0969da'}
-                                    fillOpacity={0.6}
-                                />
-                                <Tooltip
-                                    contentStyle={{
-                                        backgroundColor: theme === 'dark' ? '#161b22' : '#ffffff',
-                                        border: `1px solid ${theme === 'dark' ? '#30363d' : '#d0d7de'}`,
-                                        borderRadius: '8px',
-                                        color: theme === 'dark' ? '#c9d1d9' : '#24292f'
-                                    }}
-                                />
-                            </RadarChart>
-                        </ResponsiveContainer>
-                    </div>
-
-                    {/* Language Pie Chart */}
-                    <div className="card p-6">
-                        <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-4 flex items-center space-x-2">
-                            <Activity className="w-5 h-5" />
-                            <span>Language Usage</span>
-                        </h3>
-                        <LanguagePieChart data={languagesData} height={300} outerRadius={80} />
-                    </div>
-                </div>
-
-                {/* Contribution Chart */}
-                <div className="card p-6">
-                    <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-4 flex items-center space-x-2">
-                        <Calendar className="w-5 h-5" />
-                        <span>Contribution History</span>
+          <div className="space-y-4">
+            {recsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="loader"></div>
+              </div>
+            ) : recentMatches.length > 0 ? (
+              recentMatches.map((repo, i) => (
+                <div key={i} className="group bg-surface-container-low rounded-[1rem] p-6 hover:bg-surface-container-high transition-all flex items-center gap-6">
+                  {/* Gradient Icon */}
+                  <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${i % 2 === 0 ? 'rgba(159,167,255,0.15)' : 'rgba(193,128,255,0.15)'}, transparent)` }}>
+                    <span className="material-symbols-outlined text-primary text-2xl">
+                      {i % 3 === 0 ? 'architecture' : i % 3 === 1 ? 'database' : 'terminal'}
+                    </span>
+                  </div>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold text-on-surface group-hover:text-primary transition-colors truncate">
+                      {repo.full_name || repo.name}
                     </h3>
-                    <ResponsiveContainer width="100%" height={250}>
-                        <LineChart data={contributionsData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#30363d' : '#d0d7de'} />
-                            <XAxis
-                                dataKey="month"
-                                tick={{ fill: theme === 'dark' ? '#8b949e' : '#57606a' }}
-                            />
-                            <YAxis
-                                tick={{ fill: theme === 'dark' ? '#8b949e' : '#57606a' }}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    backgroundColor: theme === 'dark' ? '#161b22' : '#ffffff',
-                                    border: `1px solid ${theme === 'dark' ? '#30363d' : '#d0d7de'}`,
-                                    borderRadius: '8px',
-                                    color: theme === 'dark' ? '#c9d1d9' : '#24292f'
-                                }}
-                            />
-                            <Legend />
-                            <Line
-                                type="monotone"
-                                dataKey="commits"
-                                stroke={theme === 'dark' ? '#00ff41' : '#0969da'}
-                                strokeWidth={2}
-                                dot={{ fill: theme === 'dark' ? '#00ff41' : '#0969da' }}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
+                    <p className="text-sm text-on-surface-variant truncate">{repo.description || 'No description available'}</p>
+                  </div>
+                  {/* Match Score */}
+                  <div className="hidden sm:flex flex-col items-center gap-1">
+                    <span className="text-2xl font-headline font-black text-secondary">
+                      {repo.match_score ? `${Math.round(repo.match_score)}%` : `${85 + (i * 2)}%`}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-label uppercase tracking-wider">Compatibility</span>
+                  </div>
+                  {/* Arrow */}
+                  <span className="material-symbols-outlined text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    arrow_forward
+                  </span>
                 </div>
-
-                {/* Recent Repositories */}
-                <div className="card p-6">
-                    <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-4 flex items-center space-x-2">
-                        <GitBranch className="w-5 h-5" />
-                        <span>Your Recent Repositories</span>
-                    </h3>
-                    <div className="space-y-3">
-                        {repos?.slice(0, 5).map((repo, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center justify-between p-4 rounded-lg bg-light-bg-secondary dark:bg-dark-bg-tertiary border border-light-border dark:border-dark-border hover:border-light-accent dark:hover:border-dark-primary transition-all"
-                            >
-                                <div className="flex-1">
-                                    <h4 className="font-semibold text-light-text dark:text-dark-text">{repo.name}</h4>
-                                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary line-clamp-1">
-                                        {repo.description || 'No description'}
-                                    </p>
-                                </div>
-                                <div className="flex items-center space-x-4 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                                    <span className="flex items-center space-x-1">
-                                        <Star className="w-4 h-4" />
-                                        <span>{repo.stargazers_count || 0}</span>
-                                    </span>
-                                    <span className="flex items-center space-x-1">
-                                        <GitFork className="w-4 h-4" />
-                                        <span>{repo.forks_count || 0}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
+              ))
+            ) : (
+              <div className="text-center py-12 text-on-surface-variant">
+                <span className="material-symbols-outlined text-4xl mb-4 block">explore</span>
+                <p>No matches yet. Start analyzing repositories!</p>
+              </div>
+            )}
+          </div>
         </div>
-    );
-};
 
-// Stat Card Component
-const StatCard = ({ icon: Icon, label, value, color }) => {
-    return (
-        <div className="card p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary mb-1">
-                        {label}
-                    </p>
-                    <p className="text-3xl font-bold text-light-text dark:text-dark-text">
-                        {value.toLocaleString()}
-                    </p>
+        {/* Architect Profile Sidebar */}
+        <div className="lg:col-span-4">
+          <div className="glass-card rounded-[1rem] p-8 relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-tertiary/10 blur-[60px] pointer-events-none"></div>
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+              {profile?.avatar_url && (
+                <div className="w-12 h-12 rounded-full overflow-hidden ring-2 ring-primary/30">
+                  <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                 </div>
-                <Icon className={`w-12 h-12 ${color}`} />
+              )}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold text-on-surface">{profile?.login || 'Architect'}</h3>
+                  <span className="material-symbols-outlined text-secondary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>verified</span>
+                </div>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-label">
+                  Core Mastery: 84%
+                </p>
+              </div>
             </div>
+
+            {/* Skills */}
+            <div className="space-y-4 mb-6">
+              <h4 className="text-xs font-label text-on-surface-variant uppercase tracking-widest font-bold">
+                Skillset Dominance
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {(skills.length > 0 ? skills.slice(0, 6) : ['JavaScript', 'React', 'Node.js', 'Python']).map((skill, i) => (
+                  <span key={i} className="px-3 py-1 bg-surface-container-highest text-primary text-[10px] font-bold rounded-full uppercase tracking-tighter border border-primary/10">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Intelligence Bars */}
+            <div className="space-y-4 mb-8">
+              <h4 className="text-xs font-label text-on-surface-variant uppercase tracking-widest font-bold">
+                System Intelligence
+              </h4>
+              {[
+                { label: 'Algorithm Efficiency', value: 92, color: 'bg-primary' },
+                { label: 'Concurrency', value: 78, color: 'bg-tertiary' },
+                { label: 'Security', value: 85, color: 'bg-secondary' },
+              ].map((bar) => (
+                <div key={bar.label}>
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-on-surface-variant font-bold uppercase tracking-widest">{bar.label}</span>
+                    <span className="text-on-surface font-bold">{bar.value}%</span>
+                  </div>
+                  <div className="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+                    <div className={`h-full ${bar.color} rounded-full transition-all duration-700`} style={{ width: `${bar.value}%` }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Download Button */}
+            <button className="w-full py-3 bg-white/5 hover:bg-white/10 rounded-full text-sm font-bold transition-all border border-white/10 flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined text-sm">download</span>
+              Download Analysis
+            </button>
+          </div>
         </div>
-    );
+      </section>
+
+      {/* Floating FAB */}
+      <div className="fixed bottom-8 right-8 z-40">
+        <button
+          className="w-14 h-14 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all"
+          style={{ background: 'linear-gradient(135deg, #8d98ff 0%, #af5cfe 100%)' }}
+        >
+          <span className="material-symbols-outlined text-white">add</span>
+        </button>
+      </div>
+
+      <Footer />
+    </div>
+  );
 };
 
 export default Dashboard;

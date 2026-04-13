@@ -7,10 +7,14 @@ import {
     savedService,
     issueService,
     systemService,
+    analyzeService,
+    bulkAnalysisService,
+    candidateService,
 } from '../services/api';
 import useAuthStore from '../store/authStore';
 
-// Auth hooks
+// === Auth Hooks ===
+
 export const useVerifyToken = () => {
     return useQuery({
         queryKey: ['auth', 'verify'],
@@ -33,8 +37,16 @@ export const useLogout = () => {
     });
 };
 
-// Profile hooks
+// === Profile Hooks ===
+
 export const useProfileSummary = () => {
+    return useQuery({
+        queryKey: ['profile', 'summary'],
+        queryFn: profileService.getSummary,
+    });
+};
+
+export const useProfile = () => {
     return useQuery({
         queryKey: ['profile', 'summary'],
         queryFn: profileService.getSummary,
@@ -81,18 +93,20 @@ export const useUpdateTechStack = () => {
     });
 };
 
-// Recommendation hooks
+// === Recommendation Hooks ===
+
 export const useRecommendations = (params = {}) => {
     return useQuery({
         queryKey: ['recommendations', params],
         queryFn: () => recommendationService.getRecommendations(params),
-        staleTime: 0, // Always fetch fresh data
-        enabled: true, // Always enabled, even with empty params
+        staleTime: 0,
+        enabled: true,
     });
 };
 
-// Search hooks
-export const useSearchRepos = (params = {}) => {
+// === Search Hooks ===
+
+export const useSearchReposQuery = (params = {}) => {
     return useQuery({
         queryKey: ['search', params],
         queryFn: () => searchService.searchRepos(params),
@@ -100,16 +114,32 @@ export const useSearchRepos = (params = {}) => {
     });
 };
 
-// Issue recommendation hooks
+export const useSearchRepos = () => {
+    return useMutation({
+        mutationFn: (params) => searchService.searchRepos(params),
+    });
+};
+
+// === Issues Hooks ===
+
 export const useRecommendedIssues = (params = {}) => {
     return useQuery({
         queryKey: ['issues', 'recommendations', params],
         queryFn: () => issueService.getRecommendations(params),
-        staleTime: 5 * 60 * 1000, // 5 minutes
+        staleTime: 5 * 60 * 1000,
     });
 };
 
-// Saved repositories hooks
+export const useIssues = (params = {}) => {
+    return useQuery({
+        queryKey: ['issues', 'recommendations', params],
+        queryFn: () => issueService.getRecommendations(params),
+        staleTime: 5 * 60 * 1000,
+    });
+};
+
+// === Saved Repositories Hooks ===
+
 export const useSavedRepos = () => {
     return useQuery({
         queryKey: ['saved'],
@@ -150,12 +180,65 @@ export const useUpdateSavedRepo = () => {
     });
 };
 
-// System hooks
+// === Deep Analysis Hooks ===
+
+export const useAnalyzeRepo = () => {
+    return useMutation({
+        mutationFn: ({ repoUrl, skills }) => analyzeService.analyzeRepo(repoUrl, skills),
+    });
+};
+
+// === Bulk Analysis Hooks ===
+
+export const useBulkBatches = () => {
+    return useQuery({
+        queryKey: ['bulk-analysis', 'batches'],
+        queryFn: bulkAnalysisService.getBatches,
+    });
+};
+
+export const useBulkBatchDetail = (batchId) => {
+    return useQuery({
+        queryKey: ['bulk-analysis', 'batch', batchId],
+        queryFn: () => bulkAnalysisService.getBatch(batchId),
+        enabled: !!batchId,
+    });
+};
+
+export const useStartBatch = () => {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: ({ usernames, batchName }) => bulkAnalysisService.startBatch(usernames, batchName),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['bulk-analysis'] });
+        },
+    });
+};
+
+// === Candidate Hooks ===
+
+export const useCandidate = (username) => {
+    return useQuery({
+        queryKey: ['candidate', username],
+        queryFn: () => candidateService.getCandidate(username),
+        enabled: !!username,
+    });
+};
+
+export const useAnalyzeCandidate = () => {
+    return useMutation({
+        mutationFn: (username) => candidateService.analyzeCandidate(username),
+    });
+};
+
+// === System Hooks ===
+
 export const useApiRoutes = () => {
     return useQuery({
         queryKey: ['system', 'routes'],
         queryFn: systemService.getApiRoutes,
-        staleTime: 1000 * 60 * 5, // 5 minutes
+        staleTime: 1000 * 60 * 5,
     });
 };
 
@@ -163,6 +246,6 @@ export const useBackendHealth = () => {
     return useQuery({
         queryKey: ['system', 'health'],
         queryFn: systemService.checkHealth,
-        refetchInterval: 30000, // Check every 30 seconds
+        refetchInterval: 30000,
     });
 };

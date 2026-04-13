@@ -1,5 +1,5 @@
 // controllers/profileController.js
-const supabase = require('../config/database');
+const pool = require('../config/database');
 const GitHubService = require('../services/githubService');
 const AnalysisService = require('../services/analysisService');
 
@@ -20,15 +20,12 @@ class ProfileController {
     try {
       const userId = req.user.userId;
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single();
+      const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+      const user = rows[0];
+      const error = !user ? new Error('User not found') : null;
 
-      if (error) {
-        console.error('Supabase error (getProfileSummary):', error);
-        return res.status(500).json({ error: 'Failed to fetch user' });
+      if (error && rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
       if (!user) {
@@ -72,13 +69,15 @@ class ProfileController {
         domainsCount: analysis.domains?.length
       });
 
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({
-          profile_data: analysis,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId);
+      let updateError = null;
+      try {
+        await pool.query(
+          'UPDATE users SET profile_data = $1, updated_at = $2 WHERE id = $3',
+          [analysis, new Date().toISOString(), userId]
+        );
+      } catch (err) {
+        updateError = err;
+      }
 
       if (updateError) {
         console.error('Supabase error (update profile_data):', updateError);
@@ -104,15 +103,12 @@ class ProfileController {
     try {
       const userId = req.user.userId;
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('github_access_token')
-        .eq('id', userId)
-        .single();
+      const { rows } = await pool.query('SELECT github_access_token FROM users WHERE id = $1', [userId]);
+      const user = rows[0];
+      const error = !user ? new Error('User not found') : null;
 
-      if (error) {
-        console.error('Supabase error (getUserRepos):', error);
-        return res.status(500).json({ error: 'Failed to fetch user' });
+      if (error && rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
       if (!user) {
@@ -133,15 +129,12 @@ class ProfileController {
     try {
       const userId = req.user.userId;
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('profile_data')
-        .eq('id', userId)
-        .single();
+      const { rows } = await pool.query('SELECT profile_data FROM users WHERE id = $1', [userId]);
+      const user = rows[0];
+      const error = !user ? new Error('User not found') : null;
 
-      if (error) {
-        console.error('Supabase error (getUserStats):', error);
-        return res.status(500).json({ error: 'Failed to fetch user stats' });
+      if (error && rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
       if (!user || !user.profile_data) {
@@ -163,15 +156,12 @@ class ProfileController {
 
       console.log('[ProfileController] Fetching contribution history for user:', userId);
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('github_access_token, github_username')
-        .eq('id', userId)
-        .single();
+      const { rows } = await pool.query('SELECT github_access_token, github_username FROM users WHERE id = $1', [userId]);
+      const user = rows[0];
+      const error = !user ? new Error('User not found') : null;
 
-      if (error) {
-        console.error('[ProfileController] Supabase error:', error);
-        return res.status(500).json({ error: 'Failed to fetch user' });
+      if (error && rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
       if (!user) {
@@ -244,15 +234,12 @@ class ProfileController {
 
       console.log('[ProfileController] Fetching tech stack for user:', userId);
 
-      const { data: user, error } = await supabase
-        .from('users')
-        .select('profile_data, user_techstack')
-        .eq('id', userId)
-        .single();
+      const { rows } = await pool.query('SELECT profile_data, user_techstack FROM users WHERE id = $1', [userId]);
+      const user = rows[0];
+      const error = !user ? new Error('User not found') : null;
 
-      if (error) {
-        console.error('[ProfileController] Supabase error:', error);
-        return res.status(500).json({ error: 'Failed to fetch user tech stack' });
+      if (error && rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
       if (!user) {
@@ -305,15 +292,17 @@ class ProfileController {
       }
 
       // Update user tech stack
-      const { data: updatedUser, error } = await supabase
-        .from('users')
-        .update({
-          user_techstack: { customTech },
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', userId)
-        .select('user_techstack')
-        .single();
+      let updatedUser;
+      let error = null;
+      try {
+        const { rows } = await pool.query(
+          'UPDATE users SET user_techstack = $1, updated_at = $2 WHERE id = $3 RETURNING user_techstack',
+          [{ customTech }, new Date().toISOString(), userId]
+        );
+        updatedUser = rows[0];
+      } catch (err) {
+        error = err;
+      }
 
       if (error) {
         console.error('[ProfileController] Supabase error:', error);

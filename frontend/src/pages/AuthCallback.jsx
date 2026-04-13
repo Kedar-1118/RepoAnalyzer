@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
 import useAuthStore from '../store/authStore';
 import { authService } from '../services/api';
 
@@ -53,24 +52,24 @@ const AuthCallback = () => {
     }, [searchParams, navigate, setAuth]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-light-bg dark:bg-dark-bg">
+        <div className="min-h-screen flex items-center justify-center bg-surface">
             <div className="text-center space-y-4">
                 {error ? (
                     <>
                         <div className="text-red-500 text-xl font-semibold">
                             Authentication Error
                         </div>
-                        <p className="text-light-text-secondary dark:text-dark-text-secondary">
+                        <p className="text-on-surface-variant">
                             {error}
                         </p>
-                        <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
+                        <p className="text-sm text-on-surface-variant">
                             Redirecting to login...
                         </p>
                     </>
                 ) : (
                     <>
-                        <Loader2 className="w-12 h-12 animate-spin text-light-accent dark:text-dark-primary mx-auto" />
-                        <p className="text-light-text dark:text-dark-text">
+                        <div className="loader mx-auto"></div>
+                        <p className="text-on-surface">
                             Completing authentication...
                         </p>
                     </>

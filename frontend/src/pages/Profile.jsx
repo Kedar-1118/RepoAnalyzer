@@ -1,419 +1,210 @@
-import { useState, useMemo, useEffect } from 'react';
-import {
-    User, Mail, Calendar, GitBranch, Star, GitFork, TrendingUp,
-    Search, Filter, Plus, X, Save, Code2, Award, Activity
-} from 'lucide-react';
-import RepoCard from '../components/RepoCard';
-import RepoAnalysisModal from '../components/RepoAnalysisModal';
-import {
-    useProfileSummary,
-    useProfileRepos,
-    useUserTechStack,
-    useUpdateTechStack,
-    useProfileContributions
-} from '../hooks/useApi';
-import useThemeStore from '../store/themeStore';
-import useToastStore from '../store/toastStore';
+import { useProfile, useSavedRepos } from '../hooks/useApi';
+import Footer from '../components/Footer';
 
 const Profile = () => {
-    const { data: summaryData, isLoading: summaryLoading } = useProfileSummary();
-    const { data: reposData, isLoading: reposLoading } = useProfileRepos();
-    const { data: techStackData, isLoading: techStackLoading } = useUserTechStack();
-    const { data: contributionsData } = useProfileContributions();
-    const updateTechStackMutation = useUpdateTechStack();
-    const { theme } = useThemeStore();
-    const toast = useToastStore();
+  const { data: profile, isLoading } = useProfile();
+  const { data: savedRepos } = useSavedRepos();
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [languageFilter, setLanguageFilter] = useState('all');
-    const [sortBy, setSortBy] = useState('updated');
-    const [showAddTech, setShowAddTech] = useState(false);
-    const [customTechnologies, setCustomTechnologies] = useState([]);
-    const [newTech, setNewTech] = useState({ name: '', proficiency: 'Intermediate', category: 'Language' });
-    const [selectedRepo, setSelectedRepo] = useState(null);
+  if (isLoading) {
+    return <div className="flex justify-center items-center min-h-[60vh]"><div className="loader"></div></div>;
+  }
 
-    const summary = summaryData?.profile;
-    const repos = reposData?.repositories || [];
-    const techStack = techStackData || {};
+  const skills = profile?.skills || profile?.tech_stack || ['JavaScript', 'React', 'Node.js', 'Python'];
+  const saved = (savedRepos?.repositories || savedRepos || []).slice(0, 4);
 
-    // Initialize custom technologies from API data
-    useEffect(() => {
-        if (techStack.customTechnologies) {
-            setCustomTechnologies(techStack.customTechnologies);
-        }
-    }, [techStack]);
-
-    const isLoading = summaryLoading || reposLoading || techStackLoading;
-
-    // Get unique languages for filter
-    const languages = useMemo(() => {
-        const langs = new Set(repos.map(repo => repo.language).filter(Boolean));
-        return ['all', ...Array.from(langs)];
-    }, [repos]);
-
-    // Filter and sort repositories
-    const filteredRepos = useMemo(() => {
-        let filtered = repos.filter(repo => {
-            const matchesSearch = repo.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (repo.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesLanguage = languageFilter === 'all' || repo.language === languageFilter;
-            return matchesSearch && matchesLanguage;
-        });
-
-        // Sort repositories
-        filtered.sort((a, b) => {
-            switch (sortBy) {
-                case 'name':
-                    return a.name.localeCompare(b.name);
-                case 'stars':
-                    return (b.stargazers_count || 0) - (a.stargazers_count || 0);
-                case 'forks':
-                    return (b.forks_count || 0) - (a.forks_count || 0);
-                case 'updated':
-                default:
-                    return new Date(b.updated_at) - new Date(a.updated_at);
-            }
-        });
-
-        return filtered;
-    }, [repos, searchTerm, languageFilter, sortBy]);
-
-    const handleAddTechnology = () => {
-        if (!newTech.name.trim()) return;
-
-        const updatedTech = [...customTechnologies, newTech];
-        setCustomTechnologies(updatedTech);
-        setNewTech({ name: '', proficiency: 'Intermediate', category: 'Language' });
-        setShowAddTech(false);
-    };
-
-    const handleRemoveTechnology = (index) => {
-        const updatedTech = customTechnologies.filter((_, i) => i !== index);
-        setCustomTechnologies(updatedTech);
-    };
-
-    const handleSaveTechStack = async () => {
-        try {
-            await updateTechStackMutation.mutateAsync(customTechnologies);
-            toast.success('Tech stack saved successfully!');
-        } catch (error) {
-            console.error('Failed to save tech stack:', error);
-            toast.error('Failed to save tech stack. Please try again.');
-        }
-    };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="spinner"></div>
+  return (
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full space-y-10">
+      {/* Profile Header Bento */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Profile Card */}
+        <div className="lg:col-span-2 glass-card rounded-[1rem] p-8 flex flex-col md:flex-row gap-8 items-center md:items-start relative overflow-hidden">
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-3xl"></div>
+          <div className="relative">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-[1rem] overflow-hidden ring-4 ring-indigo-500/20 shadow-2xl">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={profile.login} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-surface-container-high flex items-center justify-center text-3xl font-bold">{profile?.login?.[0]}</div>
+              )}
             </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg">
-            <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-                {/* Profile Header */}
-                <div className="card p-8">
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
-                        <img
-                            src={summary?.avatarUrl || 'https://github.com/ghost.png'}
-                            alt="Profile"
-                            className="w-32 h-32 rounded-full border-4 border-light-accent dark:border-dark-primary"
-                        />
-                        <div className="flex-1 text-center md:text-left">
-                            <h1 className="text-3xl font-bold text-light-text dark:text-dark-text mb-2">
-                                {summary?.username || 'Developer'}
-                            </h1>
-                            <div className="space-y-2 text-light-text-secondary dark:text-dark-text-secondary">
-                                <div className="flex items-center justify-center md:justify-start gap-2">
-                                    <User className="w-4 h-4" />
-                                    <span>@{summary?.username}</span>
-                                </div>
-                                {summary?.email && (
-                                    <div className="flex items-center justify-center md:justify-start gap-2">
-                                        <Mail className="w-4 h-4" />
-                                        <span>{summary?.email}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center justify-center md:justify-start gap-2">
-                                    <Calendar className="w-4 h-4" />
-                                    <span>Joined GitHub {new Date().getFullYear()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+            <div className="absolute -bottom-2 -right-2 bg-primary-container text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">PRO</div>
+          </div>
+          <div className="flex-1 text-center md:text-left">
+            <h1 className="text-4xl font-extrabold tracking-tighter text-on-surface mb-2">{profile?.name || profile?.login}</h1>
+            <p className="text-indigo-400 font-medium mb-4">{profile?.bio || 'Open Source Contributor'}</p>
+            <p className="text-on-surface-variant max-w-lg leading-relaxed mb-6">
+              {profile?.bio || 'Building the next generation of software. Passionate about open source and connecting talent with impactful projects.'}
+            </p>
+            <div className="flex flex-wrap justify-center md:justify-start gap-4 text-sm text-slate-400">
+              {profile?.location && (
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">location_on</span>
+                  <span>{profile.location}</span>
                 </div>
-
-                {/* Statistics Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <StatCard
-                        icon={GitBranch}
-                        label="Repositories"
-                        value={summary?.totalRepos || 0}
-                        color="text-light-accent dark:text-dark-primary"
-                    />
-                    <StatCard
-                        icon={Star}
-                        label="Total Stars"
-                        value={summary?.totalStars || 0}
-                        color="text-yellow-500"
-                    />
-                    <StatCard
-                        icon={GitFork}
-                        label="Total Forks"
-                        value={summary?.totalForks || 0}
-                        color="text-green-600 dark:text-green-400"
-                    />
-                    <StatCard
-                        icon={TrendingUp}
-                        label="Activity Score"
-                        value={summary?.activityScore?.score || 0}
-                        color="text-purple-600 dark:text-purple-400"
-                    />
+              )}
+              {profile?.blog && (
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-sm">link</span>
+                  <span className="text-indigo-400">{profile.blog}</span>
                 </div>
-
-                {/* Tech Stack Section */}
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-2xl font-bold text-light-text dark:text-dark-text flex items-center gap-2">
-                            <Code2 className="w-6 h-6" />
-                            Tech Stack
-                        </h2>
-                        <button
-                            onClick={handleSaveTechStack}
-                            disabled={updateTechStackMutation.isPending}
-                            className="btn-primary flex items-center gap-2"
-                        >
-                            <Save className="w-4 h-4" />
-                            {updateTechStackMutation.isPending ? 'Saving...' : 'Save Changes'}
-                        </button>
-                    </div>
-
-                    {/* GitHub Detected Tech Stack */}
-                    <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-3">
-                            GitHub Detected Languages
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {techStack.githubDetected?.map((tech, index) => (
-                                <div
-                                    key={index}
-                                    className="px-4 py-2 rounded-lg bg-light-bg-secondary dark:bg-dark-bg-tertiary border border-light-border dark:border-dark-border"
-                                >
-                                    <span className="text-light-text dark:text-dark-text font-medium">
-                                        {tech.language}
-                                    </span>
-                                    <span className="ml-2 text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                                        {tech.percentage}%
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Custom Technologies */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-lg font-semibold text-light-text dark:text-dark-text">
-                                Custom Skills & Technologies
-                            </h3>
-                            <button
-                                onClick={() => setShowAddTech(!showAddTech)}
-                                className="btn-secondary flex items-center gap-2"
-                            >
-                                <Plus className="w-4 h-4" />
-                                Add Technology
-                            </button>
-                        </div>
-
-                        {showAddTech && (
-                            <div className="mb-4 p-4 rounded-lg bg-light-bg-secondary dark:bg-dark-bg-tertiary border border-light-border dark:border-dark-border">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                    <input
-                                        type="text"
-                                        placeholder="Technology name"
-                                        value={newTech.name}
-                                        onChange={(e) => setNewTech({ ...newTech, name: e.target.value })}
-                                        className="input-field"
-                                    />
-                                    <select
-                                        value={newTech.proficiency}
-                                        onChange={(e) => setNewTech({ ...newTech, proficiency: e.target.value })}
-                                        className="input-field"
-                                    >
-                                        <option value="Beginner">Beginner</option>
-                                        <option value="Intermediate">Intermediate</option>
-                                        <option value="Advanced">Advanced</option>
-                                        <option value="Expert">Expert</option>
-                                    </select>
-                                    <select
-                                        value={newTech.category}
-                                        onChange={(e) => setNewTech({ ...newTech, category: e.target.value })}
-                                        className="input-field"
-                                    >
-                                        <option value="Language">Language</option>
-                                        <option value="Framework">Framework</option>
-                                        <option value="Tool">Tool</option>
-                                        <option value="Database">Database</option>
-                                        <option value="Cloud">Cloud</option>
-                                        <option value="Other">Other</option>
-                                    </select>
-                                    <button
-                                        onClick={handleAddTechnology}
-                                        className="btn-primary"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-2">
-                            {customTechnologies.map((tech, index) => (
-                                <div
-                                    key={index}
-                                    className="px-4 py-2 rounded-lg bg-gradient-to-r from-light-accent/10 to-light-accent/5 dark:from-dark-primary/20 dark:to-dark-primary/10 border border-light-accent/50 dark:border-dark-primary/50 flex items-center gap-2"
-                                >
-                                    <div>
-                                        <span className="text-light-text dark:text-dark-text font-medium">
-                                            {tech.name}
-                                        </span>
-                                        <span className="ml-2 text-xs text-light-text-secondary dark:text-dark-text-secondary">
-                                            {tech.proficiency} • {tech.category}
-                                        </span>
-                                    </div>
-                                    <button
-                                        onClick={() => handleRemoveTechnology(index)}
-                                        className="text-red-500 hover:text-red-700 dark:hover:text-red-400"
-                                    >
-                                        <X className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            ))}
-                            {customTechnologies.length === 0 && (
-                                <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                                    No custom technologies added yet. Click "Add Technology" to get started.
-                                </p>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Repositories Section */}
-                <div className="card p-6">
-                    <h2 className="text-2xl font-bold text-light-text dark:text-dark-text mb-6 flex items-center gap-2">
-                        <GitBranch className="w-6 h-6" />
-                        Your Repositories ({filteredRepos.length})
-                    </h2>
-
-                    {/* Filters */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-light-text-secondary dark:text-dark-text-secondary" />
-                            <input
-                                type="text"
-                                placeholder="Search repositories..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="input-field pl-10"
-                            />
-                        </div>
-                        <select
-                            value={languageFilter}
-                            onChange={(e) => setLanguageFilter(e.target.value)}
-                            className="input-field"
-                        >
-                            {languages.map(lang => (
-                                <option key={lang} value={lang}>
-                                    {lang === 'all' ? 'All Languages' : lang}
-                                </option>
-                            ))}
-                        </select>
-                        <select
-                            value={sortBy}
-                            onChange={(e) => setSortBy(e.target.value)}
-                            className="input-field"
-                        >
-                            <option value="updated">Recently Updated</option>
-                            <option value="name">Name</option>
-                            <option value="stars">Most Stars</option>
-                            <option value="forks">Most Forks</option>
-                        </select>
-                    </div>
-
-                    {/* Repository List */}
-                    <div className="space-y-4">
-                        {filteredRepos.map((repo, index) => (
-                            <RepoCard
-                                key={index}
-                                repo={repo}
-                                clickable={true}
-                                showSaveButton={false}
-                                onClick={() => setSelectedRepo(repo)}
-                            />
-                        ))}
-                        {filteredRepos.length === 0 && (
-                            <div className="text-center py-12 text-light-text-secondary dark:text-dark-text-secondary">
-                                No repositories found matching your filters.
-                            </div>
-                        )}
-
-                {/* Repository Analysis Modal */}
-                {selectedRepo && (
-                    <RepoAnalysisModal
-                        repo={selectedRepo}
-                        onClose={() => setSelectedRepo(null)}
-                    />
-                )}
-                    </div>
-                </div>
-
-                {/* Domains Section */}
-                {summary?.domains && summary.domains.length > 0 && (
-                    <div className="card p-6">
-                        <h2 className="text-2xl font-bold text-light-text dark:text-dark-text mb-4 flex items-center gap-2">
-                            <Award className="w-6 h-6" />
-                            Expertise & Domains
-                        </h2>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {summary.domains.map((domain, index) => (
-                                <div
-                                    key={index}
-                                    className="p-4 rounded-lg bg-light-bg-secondary dark:bg-dark-bg-tertiary border border-light-border dark:border-dark-border"
-                                >
-                                    <h3 className="font-semibold text-light-text dark:text-dark-text capitalize mb-1">
-                                        {domain.domain}
-                                    </h3>
-                                    <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                                        {domain.repoCount} {domain.repoCount === 1 ? 'repository' : 'repositories'}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+              )}
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-sm">calendar_today</span>
+                <span>Joined {profile?.created_at ? new Date(profile.created_at).getFullYear() : '2024'}</span>
+              </div>
             </div>
+          </div>
         </div>
-    );
-};
 
-// Stat Card Component
-const StatCard = ({ icon: Icon, label, value, color }) => {
-    return (
-        <div className="card p-4 hover:shadow-lg transition-shadow">
-            <div className="flex flex-col items-center text-center">
-                <Icon className={`w-8 h-8 ${color} mb-2`} />
-                <p className="text-2xl font-bold text-light-text dark:text-dark-text mb-1">
-                    {value.toLocaleString()}
-                </p>
-                <p className="text-sm text-light-text-secondary dark:text-dark-text-secondary">
-                    {label}
-                </p>
+        {/* Matchmaker Stats */}
+        <div className="glass-card rounded-[1rem] p-8 flex flex-col justify-between bg-gradient-to-br from-indigo-900/20 to-purple-900/20">
+          <div>
+            <h3 className="text-sm font-bold uppercase tracking-widest text-slate-500 mb-6">Matchmaker Stats</h3>
+            <div className="space-y-6">
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-3xl font-black text-white">94%</p>
+                  <p className="text-xs text-slate-400">Contribution Match Score</p>
+                </div>
+                <span className="material-symbols-outlined text-indigo-400 text-4xl">analytics</span>
+              </div>
+              <div className="flex justify-between items-end">
+                <div>
+                  <p className="text-3xl font-black text-white">{profile?.public_repos || 0}</p>
+                  <p className="text-xs text-slate-400">Active Repositories</p>
+                </div>
+                <span className="material-symbols-outlined text-purple-400 text-4xl">rocket_launch</span>
+              </div>
             </div>
+          </div>
+          <button className="w-full mt-8 py-3 bg-white/5 hover:bg-white/10 rounded-full text-sm font-semibold transition-all border border-white/10">
+            View Public Profile
+          </button>
         </div>
-    );
+      </section>
+
+      {/* Skills & History Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* My Skills + Contribution History */}
+        <div className="lg:col-span-5 flex flex-col gap-8">
+          {/* My Skills */}
+          <section className="glass-card rounded-[1rem] p-8">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold tracking-tight">My Skills</h2>
+              <button className="text-indigo-400 text-sm font-semibold flex items-center gap-1 hover:text-indigo-300 transition-all">
+                <span className="material-symbols-outlined text-lg">edit</span>
+                Manage Skills
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              {skills.map((skill, i) => (
+                <div key={i} className={`px-4 py-2 rounded-[0.75rem] flex items-center gap-3 group ${
+                  i % 3 === 0 ? 'bg-indigo-500/10 border border-indigo-500/20' :
+                  i % 3 === 1 ? 'bg-purple-500/10 border border-purple-500/20' :
+                  'bg-slate-800/50 border border-white/5'
+                }`}>
+                  <span className={`font-medium ${
+                    i % 3 === 0 ? 'text-indigo-300' : i % 3 === 1 ? 'text-purple-300' : 'text-slate-300'
+                  }`}>{skill}</span>
+                  <button className="text-slate-500 hover:text-red-400 transition-opacity">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              ))}
+              <button className="px-4 py-2 border border-dashed border-slate-700 rounded-[0.75rem] text-slate-500 hover:border-indigo-500 hover:text-indigo-400 transition-all flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">add</span>
+                <span className="text-sm font-medium">Add Skill</span>
+              </button>
+            </div>
+          </section>
+
+          {/* Contribution History */}
+          <section className="glass-card rounded-[1rem] p-8 flex-1">
+            <h2 className="text-xl font-bold tracking-tight mb-8">Contribution History</h2>
+            <div className="space-y-8 relative">
+              <div className="absolute left-4 top-2 bottom-2 w-px bg-gradient-to-b from-indigo-500 via-slate-800 to-transparent"></div>
+              {[
+                { title: 'Profile Updated', time: 'Recently', desc: 'Synced GitHub profile data', color: 'bg-indigo-500' },
+                { title: 'Skills Added', time: '1 week ago', desc: 'Updated tech stack preferences', color: 'bg-slate-700' },
+                { title: 'Joined Platform', time: profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Earlier', desc: 'Created OS Matchmaker account', color: 'bg-slate-700' },
+              ].map((item, i) => (
+                <div key={i} className="relative pl-10">
+                  <div className={`absolute left-2.5 top-1.5 w-3 h-3 rounded-full ${item.color} ${i === 0 ? 'ring-4 ring-indigo-500/20' : ''}`}></div>
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="font-bold text-on-surface">{item.title}</h4>
+                    <span className="text-xs text-slate-500">{item.time}</span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant">{item.desc}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {/* Saved Repositories */}
+        <div className="lg:col-span-7">
+          <section className="glass-card rounded-[1rem] p-8 h-full">
+            <div className="flex justify-between items-center mb-8">
+              <h2 className="text-xl font-bold tracking-tight">Saved Repositories</h2>
+              <a href="/saved" className="text-indigo-400 text-sm font-semibold hover:underline">View All</a>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {saved.length > 0 ? saved.map((repo, i) => (
+                <div key={i} className="bg-surface-container-low rounded-[1rem] p-6 hover:bg-surface-container-high transition-all group cursor-pointer border border-transparent hover:border-indigo-500/20">
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`w-12 h-12 rounded-[0.75rem] flex items-center justify-center ${
+                      i % 3 === 0 ? 'bg-indigo-500/10 text-indigo-400' : i % 3 === 1 ? 'bg-purple-500/10 text-purple-400' : 'bg-teal-500/10 text-teal-400'
+                    }`}>
+                      <span className="material-symbols-outlined text-3xl">terminal</span>
+                    </div>
+                    <button className="text-indigo-500">
+                      <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>bookmark</span>
+                    </button>
+                  </div>
+                  <h3 className="font-bold text-lg mb-1 group-hover:text-indigo-400 transition-colors">{repo.name || repo.full_name}</h3>
+                  <p className="text-sm text-slate-500 mb-6 line-clamp-2">{repo.description || 'No description'}</p>
+                  <div className="flex items-center gap-4 text-xs font-medium">
+                    {repo.language && (
+                      <div className="flex items-center gap-1">
+                        <span className="w-3 h-3 rounded-full bg-indigo-500"></span>
+                        <span>{repo.language}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 text-slate-400">
+                      <span className="material-symbols-outlined text-sm">star</span>
+                      <span>{repo.stargazers_count?.toLocaleString() || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              )) : (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="bg-surface-container-low rounded-[1rem] p-6 border border-dashed border-outline-variant/20 flex items-center justify-center min-h-[160px]">
+                    <p className="text-sm text-on-surface-variant">No saved repos yet</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* CTA Banner */}
+            <div className="mt-12 p-6 rounded-[1rem] bg-gradient-to-r from-indigo-600/20 to-purple-600/20 border border-indigo-500/30 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <h4 className="font-bold text-lg text-white mb-1">Looking for more matches?</h4>
+                <p className="text-sm text-indigo-300">Our engine has found new repos that match your skills.</p>
+              </div>
+              <button
+                onClick={() => window.location.href = '/recommendations'}
+                className="whitespace-nowrap px-6 py-2.5 bg-indigo-500 text-white rounded-full font-bold text-sm hover:bg-indigo-400 transition-all"
+              >
+                Explore Matches
+              </button>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
 };
 
 export default Profile;
-

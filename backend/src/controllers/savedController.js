@@ -1,5 +1,5 @@
 // controllers/savedController.js
-const supabase = require('../config/database');
+const pool = require('../config/database');
 
 class SavedController {
   constructor() {
@@ -21,12 +21,17 @@ class SavedController {
         return res.status(400).json({ error: 'Repository full name is required' });
       }
 
-      const { data: existingSave, error: checkError } = await supabase
-        .from('saved_repositories')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('repo_full_name', repoFullName)
-        .maybeSingle();
+      let existingSave = null;
+      let checkError = null;
+      try {
+        const { rows } = await pool.query(
+          'SELECT id FROM saved_repositories WHERE user_id = $1 AND repo_full_name = $2',
+          [userId, repoFullName]
+        );
+        existingSave = rows[0];
+      } catch (err) {
+        checkError = err;
+      }
 
       if (checkError) {
         console.error('[SavedController] Error checking existing save:', checkError);
@@ -38,17 +43,17 @@ class SavedController {
         return res.status(400).json({ error: 'Repository already saved' });
       }
 
-      const { data: savedRepo, error } = await supabase
-        .from('saved_repositories')
-        .insert({
-          user_id: userId,
-          repo_full_name: repoFullName,
-          repo_data: repoData || {},
-          match_score: matchScore || 0,
-          notes: notes || ''
-        })
-        .select()
-        .single();
+      let savedRepo = null;
+      let error = null;
+      try {
+        const { rows } = await pool.query(
+          'INSERT INTO saved_repositories (user_id, repo_full_name, repo_data, match_score, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+          [userId, repoFullName, repoData || {}, matchScore || 0, notes || '']
+        );
+        savedRepo = rows[0];
+      } catch (err) {
+        error = err;
+      }
 
       if (error) {
         console.error('[SavedController] Error saving repository:', error);
@@ -77,11 +82,15 @@ class SavedController {
         return res.status(400).json({ error: 'Repository full name is required' });
       }
 
-      const { error } = await supabase
-        .from('saved_repositories')
-        .delete()
-        .eq('user_id', userId)
-        .eq('repo_full_name', repoFullName);
+      let error = null;
+      try {
+        await pool.query(
+          'DELETE FROM saved_repositories WHERE user_id = $1 AND repo_full_name = $2',
+          [userId, repoFullName]
+        );
+      } catch (err) {
+        error = err;
+      }
 
       if (error) {
         console.error('[SavedController] Error removing repository:', error);
@@ -106,12 +115,18 @@ class SavedController {
       const validSortFields = ['created_at', 'match_score', 'repo_full_name'];
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
 
-      const { data: savedRepos, error } = await supabase
-        .from('saved_repositories')
-        .select('*')
-        .eq('user_id', userId)
-        .order(sortField, { ascending: order === 'asc' })
-        .limit(parseInt(limit));
+      const sortOrder = order === 'asc' ? 'ASC' : 'DESC';
+      let savedRepos = [];
+      let error = null;
+      try {
+        const { rows } = await pool.query(
+          `SELECT * FROM saved_repositories WHERE user_id = $1 ORDER BY ${sortField} ${sortOrder} LIMIT $2`,
+          [userId, parseInt(limit)]
+        );
+        savedRepos = rows;
+      } catch (err) {
+        error = err;
+      }
 
       if (error) {
         console.error('[SavedController] Error listing saved repositories:', error);
@@ -167,13 +182,17 @@ class SavedController {
         return res.status(400).json({ error: 'Repository full name is required' });
       }
 
-      const { data: updatedRepo, error } = await supabase
-        .from('saved_repositories')
-        .update({ notes: notes || '' })
-        .eq('user_id', userId)
-        .eq('repo_full_name', repoFullName)
-        .select()
-        .single();
+      let updatedRepo = null;
+      let error = null;
+      try {
+        const { rows } = await pool.query(
+          'UPDATE saved_repositories SET notes = $1 WHERE user_id = $2 AND repo_full_name = $3 RETURNING *',
+          [notes || '', userId, repoFullName]
+        );
+        updatedRepo = rows[0];
+      } catch (err) {
+        error = err;
+      }
 
       if (error) {
         console.error('[SavedController] Error updating repository:', error);

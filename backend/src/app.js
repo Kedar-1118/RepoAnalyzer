@@ -12,6 +12,8 @@ const searchRoutes = require('./routes/searchRoutes');
 const savedRoutes = require('./routes/savedRoutes');
 const issueRoutes = require('./routes/issueRoutes');
 const analyzeRoutes = require('./routes/analyzeRoutes');
+const bulkAnalysisRoutes = require('./routes/bulkAnalysisRoutes');
+const candidateRoutes = require('./routes/candidateRoutes');
 
 const app = express();
 
@@ -36,7 +38,7 @@ app.use('/api/', limiter);
 app.get('/', (req, res) => {
   res.json({
     message: 'Open Source Matchmaker API',
-    version: '1.0.0',
+    version: '2.0.0',
     endpoints: {
       auth: '/auth',
       profile: '/profile',
@@ -44,7 +46,9 @@ app.get('/', (req, res) => {
       search: '/search',
       saved: '/saved',
       issues: '/issues',
-      analyze: '/analyze'
+      analyze: '/analyze',
+      bulkAnalysis: '/bulk-analysis',
+      candidates: '/candidates'
     }
   });
 });
@@ -56,6 +60,8 @@ app.use('/search', searchRoutes);
 app.use('/saved', savedRoutes);
 app.use('/issues', issueRoutes);
 app.use('/analyze', analyzeRoutes);
+app.use('/bulk-analysis', bulkAnalysisRoutes);
+app.use('/candidates', candidateRoutes);
 
 app.use((err, req, res, next) => {
   logger.error('Unhandled error:', { error: err.message, stack: err.stack });

@@ -1,234 +1,138 @@
-import { useState, useMemo } from 'react';
-import { TrendingUp, Filter, RefreshCw } from 'lucide-react';
-import { useRecommendations, useAddSavedRepo, useRemoveSavedRepo, useSavedRepos } from '../hooks/useApi';
-import useToastStore from '../store/toastStore';
-import RepoAnalysisModal from '../components/RepoAnalysisModal';
-import RepoCard from '../components/RepoCard';
-import Pagination from '../components/Pagination';
+import { useRecommendations } from '../hooks/useApi';
+import MatchScoreDonut from '../components/MatchScoreDonut';
+import Footer from '../components/Footer';
 
 const Recommendations = () => {
-    const [selectedRepo, setSelectedRepo] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const REPOS_PER_PAGE = 10;
-    const MAX_REPOS = 40;
+  const { data: recsData, isLoading } = useRecommendations();
+  const repos = recsData?.recommendations || recsData || [];
 
-    // Separate state for form inputs vs applied filters
-    const [filterInputs, setFilterInputs] = useState({
-        language: '',
-        minStars: '',
-        domain: '',
-    });
-
-    const [appliedFilters, setAppliedFilters] = useState({
-        language: '',
-        minStars: '',
-        domain: '',
-    });
-
-    const { data: recommendationsData, isLoading, refetch } = useRecommendations(appliedFilters);
-    const { data: savedReposData } = useSavedRepos();
-    const addSaved = useAddSavedRepo();
-    const removeSaved = useRemoveSavedRepo();
-    const toast = useToastStore();
-
-    // Extract actual data from API responses and limit to 40 repos
-    const allRecommendations = recommendationsData?.recommendations || [];
-    const recommendations = useMemo(() => allRecommendations.slice(0, MAX_REPOS), [allRecommendations]);
-    const savedRepos = savedReposData?.repositories || [];
-
-    // Calculate pagination
-    const totalPages = Math.ceil(recommendations.length / REPOS_PER_PAGE);
-    const paginatedRecommendations = useMemo(() => {
-        const startIndex = (currentPage - 1) * REPOS_PER_PAGE;
-        const endIndex = startIndex + REPOS_PER_PAGE;
-        return recommendations.slice(startIndex, endIndex);
-    }, [recommendations, currentPage]);
-
-    const handlePageChange = (page) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    };
-
-    const [showFilters, setShowFilters] = useState(false);
-
-    const isSaved = (repoId) => {
-        return savedRepos?.some(repo => repo.id === repoId);
-    };
-
-    const handleToggleSave = (repo) => {
-        if (isSaved(repo.id)) {
-            removeSaved.mutate(repo);
-        } else {
-            addSaved.mutate(repo);
-        }
-    };
-
-    const handleApplyFilters = () => {
-        console.log('[Recommendations] Applying filters:', filterInputs);
-        setAppliedFilters({ ...filterInputs }); // Create new object to ensure React sees the change
-    };
-
-    const handleClearFilters = () => {
-        console.log('[Recommendations] Clearing filters');
-        setFilterInputs({ language: '', minStars: '', domain: '' });
-        setAppliedFilters({ language: '', minStars: '', domain: '' });
-    };
-
-    const handleRefresh = async () => {
-        toast.info('Refreshing recommendations...');
-        await refetch();
-        toast.success('Recommendations updated!');
-    };
-
-    if (isLoading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-light-bg-secondary dark:bg-dark-bg">
-                <div className="spinner"></div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-light-bg-secondary dark:bg-dark-bg">
-            <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-                    <div>
-                        <h1 className="text-3xl font-bold text-light-text dark:text-dark-text flex items-center space-x-2">
-                            <TrendingUp className="w-8 h-8 text-light-accent dark:text-dark-primary" />
-                            <span>Recommended Repositories</span>
-                        </h1>
-                        <p className="text-light-text-secondary dark:text-dark-text-secondary mt-2">
-                            Projects matched to your skills and interests
-                        </p>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                        <button
-                            onClick={handleRefresh}
-                            disabled={isLoading}
-                            className="btn-primary flex items-center space-x-2"
-                            title="Refresh recommendations"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                            <span>Refresh</span>
-                        </button>
-                        <button
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="btn-secondary flex items-center space-x-2"
-                        >
-                            <Filter className="w-4 h-4" />
-                            <span>{showFilters ? 'Hide' : 'Show'} Filters</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Filters */}
-                {showFilters && (
-                    <div className="card p-6 animate-slide-in">
-                        <h3 className="text-lg font-semibold text-light-text dark:text-dark-text mb-4">
-                            Filter Recommendations
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                                    Language
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g., JavaScript, Python"
-                                    className="input"
-                                    value={filterInputs.language}
-                                    onChange={(e) => setFilterInputs({ ...filterInputs, language: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                                    Minimum Stars
-                                </label>
-                                <input
-                                    type="number"
-                                    placeholder="e.g., 100"
-                                    className="input"
-                                    value={filterInputs.minStars}
-                                    onChange={(e) => setFilterInputs({ ...filterInputs, minStars: e.target.value })}
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-light-text dark:text-dark-text mb-2">
-                                    Domain
-                                </label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g., web, ml, devops"
-                                    className="input"
-                                    value={filterInputs.domain}
-                                    onChange={(e) => setFilterInputs({ ...filterInputs, domain: e.target.value })}
-                                />
-                            </div>
-                        </div>
-                        <div className="flex space-x-3">
-                            <button
-                                onClick={handleApplyFilters}
-                                className="btn-primary flex items-center space-x-2"
-                            >
-                                <Filter className="w-4 h-4" />
-                                <span>Apply Filters</span>
-                            </button>
-                            <button
-                                onClick={handleClearFilters}
-                                className="btn-secondary"
-                            >
-                                Clear Filters
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* Recommendations List */}
-                <div className="space-y-4">
-                    {recommendations?.length === 0 ? (
-                        <div className="card p-12 text-center">
-                            <TrendingUp className="w-16 h-16 mx-auto text-light-text-secondary dark:text-dark-text-secondary mb-4" />
-                            <h3 className="text-xl font-semibold text-light-text dark:text-dark-text mb-2">
-                                No recommendations yet
-                            </h3>
-                            <p className="text-light-text-secondary dark:text-dark-text-secondary">
-                                We're analyzing your profile to find the perfect matches!
-                            </p>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="grid grid-cols-1 gap-6">
-                                {paginatedRecommendations?.map((repo) => (
-                                    <RepoCard
-                                        key={repo.id}
-                                        repo={repo}
-                                        onClick={() => setSelectedRepo(repo)}
-                                    />
-                                ))}
-                            </div>
-
-                            {/* Pagination */}
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                            />
-                        </>
-                    )}
-                </div>
-
-                {/* Analysis Modal */}
-                {selectedRepo && (
-                    <RepoAnalysisModal
-                        repo={selectedRepo}
-                        onClose={() => setSelectedRepo(null)}
-                    />
-                )}
-            </div>
+  return (
+    <div className="p-6 lg:p-10 max-w-7xl mx-auto w-full space-y-10">
+      {/* Hero Section */}
+      <section className="mb-16">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-tertiary/10 rounded-full mb-6">
+          <span className="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+          <span className="font-label text-[10px] uppercase tracking-widest text-tertiary font-bold">
+            {repos.length} New Matches Found
+          </span>
         </div>
-    );
+        <h1 className="font-headline text-5xl lg:text-6xl font-extrabold tracking-tighter text-on-surface mb-4 leading-none">
+          Architectural <br />
+          <span className="text-primary italic">Precision</span> Matches.
+        </h1>
+        <p className="text-on-surface-variant max-w-xl text-lg font-light leading-relaxed">
+          Our analyzer has mapped your contribution signature to these high-affinity repositories.
+        </p>
+      </section>
+
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-4 mb-10">
+        <button className="px-6 py-2 bg-primary text-on-primary font-bold rounded-full text-sm">All Affinity</button>
+        <button className="px-6 py-2 border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all rounded-full text-sm">JavaScript</button>
+        <button className="px-6 py-2 border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all rounded-full text-sm">Python</button>
+        <button className="px-6 py-2 border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high transition-all rounded-full text-sm">AI Infrastructure</button>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-xs text-on-surface-variant font-label uppercase tracking-widest">Sort by:</span>
+          <select className="bg-surface-container-low border-none text-xs font-bold text-primary rounded-full px-4 py-2 focus:ring-0">
+            <option>Match Score</option>
+            <option>Stars</option>
+            <option>Activity</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Repo Grid */}
+      {isLoading ? (
+        <div className="flex justify-center py-20"><div className="loader"></div></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {repos.map((repo, i) => (
+            <div key={i} className={`group relative overflow-hidden bg-surface-container-low rounded-[1rem] p-8 transition-all hover:bg-surface-container-high glow-border-hover ${i === 2 ? 'lg:row-span-2' : ''}`}>
+              {/* Match Donut */}
+              <div className="absolute top-6 right-6">
+                <MatchScoreDonut score={repo.match_score ? Math.round(repo.match_score) : 85 - i * 7} size={56} />
+              </div>
+
+              <div className="flex flex-col h-full">
+                {/* Icon + Name */}
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-12 h-12 rounded-[0.75rem] bg-gradient-to-br from-surface-variant to-background flex items-center justify-center border border-outline-variant/10">
+                    <span className={`material-symbols-outlined ${i % 3 === 0 ? 'text-primary' : i % 3 === 1 ? 'text-tertiary' : 'text-secondary'}`}>
+                      {i % 4 === 0 ? 'architecture' : i % 4 === 1 ? 'database' : i % 4 === 2 ? 'psychology' : 'terminal'}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-on-surface group-hover:text-primary transition-colors">
+                      {repo.name || repo.full_name}
+                    </h3>
+                    <p className="text-[10px] text-on-surface-variant font-label uppercase tracking-widest">
+                      {repo.owner?.login || 'Open Source'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <p className="text-sm text-on-surface-variant line-clamp-3 mb-8 leading-relaxed">
+                  {repo.description || 'A high-performance repository optimized for developer collaboration.'}
+                </p>
+
+                {/* Tags + Action */}
+                <div className="mt-auto">
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {(repo.topics || repo.language ? [repo.language] : ['Open Source']).slice(0, 3).map((tag, j) => (
+                      <span key={j} className={`px-3 py-1 bg-surface-container-highest text-[10px] font-bold rounded-full uppercase tracking-tighter ${j === 0 ? 'text-secondary' : j === 1 ? 'text-primary' : 'text-on-surface-variant'}`}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm text-primary">star</span>
+                      <span className="text-[10px] font-bold text-on-surface uppercase tracking-widest">
+                        {repo.stargazers_count?.toLocaleString() || '—'} Stars
+                      </span>
+                    </div>
+                    <button className="p-2 rounded-full hover:bg-primary/10 text-primary transition-all">
+                      <span className="material-symbols-outlined">arrow_forward</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {repos.length === 0 && (
+            <div className="col-span-full text-center py-20 text-on-surface-variant">
+              <span className="material-symbols-outlined text-5xl mb-4 block">explore</span>
+              <p className="text-lg">No matches yet. Complete your profile to start matching!</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Floating Command Bar */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 flex items-center glass-panel rounded-full px-6 py-3 shadow-2xl z-40">
+        <div className="flex items-center gap-8">
+          <button className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
+            <span className="material-symbols-outlined text-sm">filter_list</span>
+            Refine Stack
+          </button>
+          <div className="h-4 w-[1px] bg-outline-variant/20"></div>
+          <button className="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors font-bold text-xs uppercase tracking-widest">
+            <span className="material-symbols-outlined text-sm">refresh</span>
+            Regenerate
+          </button>
+          <div className="h-4 w-[1px] bg-outline-variant/20"></div>
+          <button className="flex items-center gap-2 text-on-surface-variant hover:text-white transition-colors font-bold text-xs uppercase tracking-widest">
+            <span className="material-symbols-outlined text-sm">share</span>
+            Export
+          </button>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
 };
 
 export default Recommendations;

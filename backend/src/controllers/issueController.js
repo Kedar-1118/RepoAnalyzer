@@ -1,5 +1,5 @@
 // controllers/issueController.js
-const supabase = require('../config/database');
+const pool = require('../config/database');
 const GitHubService = require('../services/githubService');
 const IssueService = require('../services/issueService');
 const MatchService = require('../services/matchService');
@@ -24,7 +24,8 @@ class IssueController {
 
             console.log('[IssueController] Fetching issues for user:', userId);
 
-            const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
+            const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+            const user = rows[0];
             if (!user) return res.status(404).json({ error: 'User not found' });
 
             const userProfile = user.profile_data;
