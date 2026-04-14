@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAnalyzeRepo } from '../hooks/useApi';
 import Footer from '../components/Footer';
 
 const DeepAnalysis = () => {
-  const [repoUrl, setRepoUrl] = useState('');
+  const location = useLocation();
+  const [repoUrl, setRepoUrl] = useState(location.state?.repoUrl || '');
   const [skills, setSkills] = useState('');
   const { mutate: analyze, data: analysis, isLoading } = useAnalyzeRepo();
+
+  useEffect(() => {
+    if (location.state?.repoUrl) {
+      analyze({ repoUrl: location.state.repoUrl, skills: '' });
+      // Clear state so a page refresh doesn't auto trigger again
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   const handleAnalyze = (e) => {
     e.preventDefault();

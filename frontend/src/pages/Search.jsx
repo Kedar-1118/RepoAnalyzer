@@ -1,15 +1,20 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSearchRepos } from '../hooks/useApi';
 import Footer from '../components/Footer';
+import RepoCard from '../components/RepoCard';
+import { LayoutGrid, List } from 'lucide-react';
 
 const Search = () => {
   const [query, setQuery] = useState('');
   const [language, setLanguage] = useState('');
   const { mutate: search, data: results, isLoading } = useSearchRepos();
+  const [viewMode, setViewMode] = useState('grid');
+  const navigate = useNavigate();
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (query) search({ query, language });
+    if (query || language) search({ query, language });
   };
 
   return (
@@ -57,30 +62,31 @@ const Search = () => {
       {/* Results */}
       {results && (
         <section className="space-y-4">
-          <p className="text-sm text-on-surface-variant">{results.length} repositories found</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-on-surface-variant">{results.length} repositories found</p>
+            <div className="flex bg-surface-container-low rounded-lg p-1 border border-outline-variant/30">
+               <button 
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-surface-container-highest text-primary' : 'text-on-surface-variant'}`}
+               >
+                  <LayoutGrid size={16} />
+               </button>
+               <button 
+                  onClick={() => setViewMode('list')}
+                  className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-surface-container-highest text-primary' : 'text-on-surface-variant'}`}
+               >
+                  <List size={16} />
+               </button>
+            </div>
+          </div>
+          
+          <div className={`grid gap-6 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 max-w-4xl'}`}>
             {results.map((repo, i) => (
-              <div key={i} className="bg-surface-container-low rounded-[1rem] p-6 hover:bg-surface-container-high transition-all group border border-transparent hover:border-primary/20">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-[0.75rem] bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined text-2xl">deployed_code</span>
-                  </div>
-                </div>
-                <h3 className="font-bold text-lg mb-1 group-hover:text-primary transition-colors">{repo.full_name || repo.name}</h3>
-                <p className="text-sm text-slate-500 mb-6 line-clamp-2">{repo.description}</p>
-                <div className="flex items-center gap-4 text-xs font-medium">
-                  {repo.language && (
-                    <div className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded-full bg-primary"></span>
-                      <span>{repo.language}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 text-slate-400">
-                    <span className="material-symbols-outlined text-sm">star</span>
-                    <span>{repo.stargazers_count?.toLocaleString()}</span>
-                  </div>
-                </div>
-              </div>
+               <RepoCard 
+                  key={i} 
+                  repo={repo} 
+                  onClick={() => navigate('/deep-analysis', { state: { repoUrl: repo.htmlUrl } })} 
+               />
             ))}
           </div>
         </section>
