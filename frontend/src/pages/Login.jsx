@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import { API_URL } from '../services/apiClient';
+import Logo from '../components/Logo';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -28,11 +29,9 @@ const Login = () => {
         {/* Glass Card */}
         <div className="glass-panel rounded-2xl p-10 text-center">
           {/* Logo */}
-          <div className="mb-8">
-            <span className="text-indigo-400 font-black text-3xl tracking-tighter font-headline">
-              Architect
-            </span>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-1 font-label">
+          <div className="mb-8 flex flex-col items-center">
+            <Logo size={48} textClass="text-3xl" className="justify-center" />
+            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest mt-2 font-label">
               Matchmaker Engine
             </p>
           </div>

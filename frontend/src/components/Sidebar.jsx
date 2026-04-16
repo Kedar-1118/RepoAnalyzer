@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import useAuthStore from '../store/authStore';
 import { useLogout } from '../hooks/useApi';
+import Logo from './Logo';
 
 const navItems = [
   { path: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
@@ -36,10 +37,8 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
     <aside className="flex flex-col h-screen w-64 bg-[#060e20] z-50 border-r border-slate-800/30">
       {/* Logo */}
       <div className="px-6 py-8">
-        <Link to={user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard'} className="block">
-          <span className="text-indigo-400 font-black text-2xl tracking-tighter font-headline">
-            Architect
-          </span>
+        <Link to={user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard'} className="block hover:opacity-80 transition-opacity">
+          <Logo />
         </Link>
       </div>
 

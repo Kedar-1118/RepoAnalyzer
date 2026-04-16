@@ -1,14 +1,16 @@
 import { Link } from 'react-router-dom';
+import useAuthStore from '../store/authStore';
+import Logo from './Logo';
 
-const Navbar = () => {
+const Navbar = ({ onMobileMenuClick }) => {
+  const { user } = useAuthStore();
+
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-[#060e20]/60 backdrop-blur-xl border-b border-white/5">
       <div className="max-w-7xl mx-auto px-6 lg:px-10 flex items-center justify-between h-16">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <span className="text-indigo-400 font-black text-xl tracking-tighter font-headline">
-            Architect
-          </span>
+          <Logo size={32} textClass="text-xl" />
           <span className="text-slate-500 text-[10px] uppercase tracking-widest font-label hidden sm:inline">
             Matchmaker
           </span>

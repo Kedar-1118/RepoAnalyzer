@@ -45,7 +45,7 @@ const TopBar = ({ onMobileMenuToggle }) => {
         {/* User Avatar */}
         {user?.avatar_url && (
           <button
-            onClick={() => navigate('/profile')}
+            onClick={() => navigate(user?.role === 'recruiter' ? '/recruiter/dashboard' : '/profile')}
             className="flex-shrink-0"
           >
             <img
