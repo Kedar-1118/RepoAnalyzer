@@ -101,7 +101,7 @@ class RecruiterService {
           ragResponse = await axios.post(`${RAG_SERVICE_URL}/api/analyze`, {
             repo_url: topRepo.html_url,
             developer_skills: ''
-          }, { timeout: 30000 });
+          }, { timeout: 120000 });
           success = true;
         } catch (err) {
           if (retries === 0) {

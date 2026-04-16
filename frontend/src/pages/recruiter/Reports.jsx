@@ -1,12 +1,25 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRecruiterProfile } from '../../hooks/useApi';
+import html2pdf from 'html2pdf.js';
 
 const Reports = () => {
     const { username } = useParams();
     const navigate = useNavigate();
     // Reuses the fetch pipeline
     const { data: reportPkg, isLoading, isError } = useRecruiterProfile(username);
+
+    const handleExport = () => {
+        const element = document.getElementById('report-content');
+        const opt = {
+            margin:       0.5,
+            filename:     `${username}_evaluation_report.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        html2pdf().from(element).set(opt).save();
+    };
 
     if (!username) {
         return (
@@ -27,7 +40,7 @@ const Reports = () => {
     const { basic, analysis } = reportPkg.data;
 
     return (
-        <div className="p-8 max-w-4xl mx-auto space-y-8 bg-white min-h-screen text-slate-900 rounded-3xl mt-8">
+        <div id="report-content" className="p-8 max-w-4xl mx-auto space-y-8 bg-white min-h-screen text-slate-900 rounded-3xl mt-8 relative">
             <div className="flex justify-between items-start border-b border-slate-200 pb-8">
                 <div>
                     <h1 className="text-4xl font-black tracking-tighter uppercase text-slate-900 mb-2">
@@ -38,10 +51,11 @@ const Reports = () => {
                     </p>
                 </div>
                 <button 
-                    onClick={() => window.print()}
+                    onClick={handleExport}
+                    data-html2canvas-ignore="true"
                     className="print:hidden bg-slate-900 text-white px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase flex items-center gap-2 hover:bg-slate-700 transition"
                 >
-                    <span className="material-symbols-outlined text-[16px]">print</span>
+                    <span className="material-symbols-outlined text-[16px]">download</span>
                     Export PDF
                 </button>
             </div>
@@ -101,7 +115,7 @@ const Reports = () => {
                 <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-slate-400">
                     Generated via OpenPulse AI Engine
                 </p>
-                <div className="mt-4 flex justify-center gap-4 print:hidden">
+                <div className="mt-4 flex justify-center gap-4 print:hidden" data-html2canvas-ignore="true">
                      <button onClick={() => navigate(-1)} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold uppercase tracking-widest underline">
                         Return
                      </button>
