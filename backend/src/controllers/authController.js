@@ -126,6 +126,7 @@ class AuthController {
           userId: user.id,
           githubId: user.github_id,
           username: user.github_username,
+          role: user.role
         },
         process.env.JWT_SECRET,
         { expiresIn: '7d' }
@@ -138,7 +139,8 @@ class AuthController {
         github_username: user.github_username,
         github_email: user.github_email,
         avatar_url: user.avatar_url,
-        created_at: user.created_at
+        created_at: user.created_at,
+        role: user.role
       };
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -170,7 +172,7 @@ class AuthController {
       const user = req.user;
 
       const { rows } = await pool.query(
-        'SELECT id, github_id, github_username, github_email, avatar_url, created_at FROM users WHERE id = $1',
+        'SELECT id, github_id, github_username, github_email, avatar_url, created_at, role FROM users WHERE id = $1',
         [user.userId]
       );
       const userData = rows[0];

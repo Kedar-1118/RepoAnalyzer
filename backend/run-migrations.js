@@ -90,6 +90,36 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS idx_users_techstack ON users USING gin(user_techstack);
     `);
 
+    // === Migration 5: Recruiter Module ===
+    console.log('[5/5] Creating recruiter tables and roles...');
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS role text DEFAULT 'user';
+      
+      CREATE TABLE IF NOT EXISTS candidate_analysis_cache (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        candidate_username text UNIQUE NOT NULL,
+        last_analyzed_commit_sha text NOT NULL,
+        metrics jsonb NOT NULL,
+        created_at timestamptz DEFAULT now(),
+        updated_at timestamptz DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS shortlisted_candidates (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        recruiter_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        candidate_username text NOT NULL,
+        score integer DEFAULT 0,
+        skills jsonb DEFAULT '[]'::jsonb,
+        repo_count integer DEFAULT 0,
+        last_analyzed_commit_sha text,
+        candidate_data jsonb DEFAULT '{}'::jsonb,
+        created_at timestamptz DEFAULT now(),
+        UNIQUE(recruiter_id, candidate_username)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_shortlisted_recruiter_id ON shortlisted_candidates(recruiter_id);
+    `);
+
     // === Disable RLS (we connect as postgres directly, RLS would block us) ===
     await client.query(`
       ALTER TABLE users DISABLE ROW LEVEL SECURITY;

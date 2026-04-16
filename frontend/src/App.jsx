@@ -19,6 +19,13 @@ import BulkAnalysis from './pages/BulkAnalysis';
 import Candidates from './pages/Candidates';
 import CandidateDetail from './pages/CandidateDetail';
 
+// Recruiter Pages
+import RecruiterDashboard from './pages/recruiter/Dashboard';
+import CandidateSearch from './pages/recruiter/CandidateSearch';
+import CandidateEvaluation from './pages/recruiter/CandidateDetail';
+import Shortlist from './pages/recruiter/Shortlist';
+import Reports from './pages/recruiter/Reports';
+
 // Layout Components
 import AppLayout from './components/AppLayout';
 import Toast from './components/Toast';
@@ -39,6 +46,19 @@ const ProtectedRoute = ({ children }) => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+  return <AppLayout>{children}</AppLayout>;
+};
+
+const RoleRoute = ({ requirement, children }) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  if (user?.role !== requirement) {
+    return <Navigate to="/dashboard" replace />;
   }
   return <AppLayout>{children}</AppLayout>;
 };
@@ -67,6 +87,13 @@ function App() {
             <Route path="/bulk-analysis" element={<ProtectedRoute><BulkAnalysis /></ProtectedRoute>} />
             <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} />
             <Route path="/candidates/:username" element={<ProtectedRoute><CandidateDetail /></ProtectedRoute>} />
+
+            {/* Recruiter Routes */}
+            <Route path="/recruiter/dashboard" element={<RoleRoute requirement="recruiter"><RecruiterDashboard /></RoleRoute>} />
+            <Route path="/recruiter/search" element={<RoleRoute requirement="recruiter"><CandidateSearch /></RoleRoute>} />
+            <Route path="/recruiter/profile/:username" element={<RoleRoute requirement="recruiter"><CandidateEvaluation /></RoleRoute>} />
+            <Route path="/recruiter/shortlist" element={<RoleRoute requirement="recruiter"><Shortlist /></RoleRoute>} />
+            <Route path="/recruiter/reports/:username?" element={<RoleRoute requirement="recruiter"><Reports /></RoleRoute>} />
 
             {/* Default */}
             <Route path="*" element={<Navigate to="/" replace />} />

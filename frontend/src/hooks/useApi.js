@@ -10,6 +10,7 @@ import {
     analyzeService,
     bulkAnalysisService,
     candidateService,
+    recruiterService,
 } from '../services/api';
 import useAuthStore from '../store/authStore';
 
@@ -247,5 +248,56 @@ export const useBackendHealth = () => {
         queryKey: ['system', 'health'],
         queryFn: systemService.checkHealth,
         refetchInterval: 30000,
+    });
+};
+
+// === Recruiter Hooks ===
+
+export const useRecruiterSearch = (params = {}) => {
+    return useQuery({
+        queryKey: ['recruiter', 'search', params],
+        queryFn: () => recruiterService.searchCandidates(params),
+        enabled: Object.keys(params).length > 0,
+    });
+};
+
+export const useRecruiterEnrichBatch = () => {
+    return useMutation({
+        mutationFn: (usernames) => recruiterService.enrichBatch(usernames),
+    });
+};
+
+export const useRecruiterProfile = (username) => {
+    return useQuery({
+        queryKey: ['recruiter', 'profile', username],
+        queryFn: () => recruiterService.getProfile(username),
+        enabled: !!username,
+    });
+};
+
+export const useRecruiterShortlist = () => {
+    return useQuery({
+        queryKey: ['recruiter', 'shortlist'],
+        queryFn: recruiterService.getShortlist,
+    });
+};
+
+export const useRecruiterAddToShortlist = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (data) => recruiterService.addToShortlist(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['recruiter', 'shortlist'] });
+        },
+    });
+};
+
+export const useRecruiterRemoveFromShortlist = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (username) => recruiterService.removeFromShortlist(username),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['recruiter', 'shortlist'] });
+        },
     });
 };

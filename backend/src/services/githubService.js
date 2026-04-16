@@ -265,6 +265,55 @@ class GitHubService {
   }
 
   /**
+   * Search GitHub users based on queries and filters.
+   */
+  async searchUsers(query, filters = {}) {
+    try {
+      const searchParams = [];
+
+      if (filters.language) {
+        searchParams.push(`language:${filters.language}`);
+      }
+      if (filters.location) {
+        searchParams.push(`location:${filters.location}`);
+      }
+      if (filters.followers) {
+        searchParams.push(`followers:>=${filters.followers}`);
+      }
+      if (filters.repos) {
+        searchParams.push(`repos:>=${filters.repos}`);
+      }
+
+      // Default string appended if query is empty just to ensure valid search
+      const q = query 
+        ? `${query} ${searchParams.join(' ')}` 
+        : (searchParams.length > 0 ? searchParams.join(' ') : 'followers:>50');
+
+      const response = await axios.get(
+        `${githubConfig.baseURL}/search/users`,
+        {
+          headers: this.headers,
+          params: {
+            q: q.trim(),
+            sort: filters.sort || 'repositories',
+            order: filters.order || 'desc',
+            per_page: filters.limit || 20,
+            page: filters.page || 1
+          }
+        }
+      );
+
+      return {
+        items: response.data.items,
+        total_count: response.data.total_count
+      };
+    } catch (error) {
+      console.error('[GitHubService] Error searching users:', error.message);
+      throw new Error(`Failed to search users: ${error.message}`);
+    }
+  }
+
+  /**
    * Fetch full details, languages, and beginner issues for a repo.
    */
   async getRepositoryDetails(owner, repo) {

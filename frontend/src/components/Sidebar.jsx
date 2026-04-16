@@ -12,6 +12,13 @@ const navItems = [
   { path: '/profile', icon: 'person', label: 'Profile' },
 ];
 
+const recruiterNavItems = [
+  { path: '/recruiter/dashboard', icon: 'dashboard', label: 'Dashboard' },
+  { path: '/recruiter/search', icon: 'search', label: 'Search' },
+  { path: '/recruiter/shortlist', icon: 'bookmarks', label: 'Shortlist' },
+  { path: '/recruiter/reports', icon: 'description', label: 'Reports' },
+];
+
 const Sidebar = ({ isMobileOpen, onMobileClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -29,7 +36,7 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
     <aside className="flex flex-col h-screen w-64 bg-[#060e20] z-50 border-r border-slate-800/30">
       {/* Logo */}
       <div className="px-6 py-8">
-        <Link to="/dashboard" className="block">
+        <Link to={user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard'} className="block">
           <span className="text-indigo-400 font-black text-2xl tracking-tighter font-headline">
             Architect
           </span>
@@ -38,7 +45,7 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-4">
-        {navItems.map((item) => (
+        {(user?.role === 'recruiter' ? recruiterNavItems : navItems).map((item) => (
           <button
             key={item.path}
             onClick={() => handleNavClick(item.path)}
@@ -62,6 +69,7 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
       </nav>
 
       {/* New Analysis CTA */}
+      {user?.role !== 'recruiter' && (
       <div className="px-4 py-4">
         <button
           onClick={() => handleNavClick('/deep-analysis')}
@@ -72,6 +80,7 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
           <span className="text-white">New Analysis</span>
         </button>
       </div>
+      )}
 
       {/* User Profile + Footer */}
       <div className="mt-auto border-t border-outline-variant/10 px-4 py-6">
@@ -92,7 +101,7 @@ const Sidebar = ({ isMobileOpen, onMobileClose }) => {
                 {user.login}
               </p>
               <p className="text-[10px] text-on-surface-variant uppercase tracking-widest">
-                Developer
+                {user.role === 'recruiter' ? 'Recruiter' : 'Developer'}
               </p>
             </div>
           </div>

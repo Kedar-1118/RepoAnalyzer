@@ -27,7 +27,7 @@ const AuthCallback = () => {
                         // User data provided in URL
                         const user = JSON.parse(decodeURIComponent(userData));
                         setAuth(user, token);
-                        navigate('/dashboard');
+                        navigate(user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
                     } else {
                         // Only token provided, fetch user data from backend
                         // Temporarily set token so apiClient can use it
@@ -35,7 +35,7 @@ const AuthCallback = () => {
 
                         const data = await authService.verifyToken();
                         setAuth(data.user, token);
-                        navigate('/dashboard');
+                        navigate(data.user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
                     }
                 } catch (err) {
                     console.error('Auth error:', err);

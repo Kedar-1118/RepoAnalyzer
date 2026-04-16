@@ -226,3 +226,34 @@ export const candidateService = {
         return response.data;
     },
 };
+
+export const recruiterService = {
+    searchCandidates: async (params = {}) => {
+        const response = await apiClient.get('/recruiter/search', { params });
+        return response.data;
+    },
+    enrichBatch: async (usernames) => {
+        const response = await apiClient.post('/recruiter/search/enrich/batch', { usernames });
+        return response.data;
+    },
+    getProfile: async (username) => {
+        const response = await apiClient.get(`/recruiter/profile/${username}`);
+        return response.data;
+    },
+    getReport: async (username) => {
+        const response = await apiClient.get(`/recruiter/reports/${username}`);
+        return response.data;
+    },
+    getShortlist: async () => {
+        const response = await apiClient.get('/recruiter/shortlist');
+        return response.data;
+    },
+    addToShortlist: async (candidateData) => {
+        const response = await apiClient.post('/recruiter/shortlist', candidateData);
+        return response.data;
+    },
+    removeFromShortlist: async (username) => {
+        const response = await apiClient.delete(`/recruiter/shortlist/${username}`);
+        return response.data;
+    }
+};

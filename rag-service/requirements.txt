@@ -6,7 +6,7 @@ pydantic-settings==2.5.2
 
 # LangChain
 langchain==0.3.7
-langchain-core==0.3.15
+langchain-core>=0.3.17
 langchain-community==0.3.7
 langchain-google-genai==2.0.4
 langchain-openai==0.2.9
