@@ -72,7 +72,7 @@ def analyze_repository(
     Returns:
         Parsed JSON analysis result
     """
-    from prompts.analysis_prompt import build_analysis_prompt
+    from modules.prompts.analysis_prompt import build_analysis_prompt
 
     prompt = build_analysis_prompt(metadata, retrieved_context, developer_skills)
     llm = get_llm()

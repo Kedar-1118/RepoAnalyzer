@@ -1,8 +1,10 @@
+import { useNavigate } from 'react-router-dom';
 import { useProfile, useRecommendations } from '../hooks/useApi';
 import StatsCard from '../components/StatsCard';
 import Footer from '../components/Footer';
 
 const Dashboard = () => {
+  const navigate = useNavigate();
   const { data: profile, isLoading: profileLoading } = useProfile();
   const { data: recsData, isLoading: recsLoading } = useRecommendations();
   const recommendations = recsData?.recommendations || recsData || [];
@@ -52,7 +54,11 @@ const Dashboard = () => {
               </div>
             ) : recentMatches.length > 0 ? (
               recentMatches.map((repo, i) => (
-                <div key={i} className="group bg-surface-container-low rounded-[1rem] p-6 hover:bg-surface-container-high transition-all flex items-center gap-6">
+                <div 
+                  key={i} 
+                  className="group bg-surface-container-low rounded-[1rem] p-6 hover:bg-surface-container-high transition-all flex items-center gap-6 cursor-pointer"
+                  onClick={() => navigate('/deep-analysis', { state: { repoUrl: repo.htmlUrl || repo.html_url || `https://github.com/${repo.fullName || repo.full_name}` } })}
+                >
                   {/* Gradient Icon */}
                   <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `linear-gradient(135deg, ${i % 2 === 0 ? 'rgba(159,167,255,0.15)' : 'rgba(193,128,255,0.15)'}, transparent)` }}>
                     <span className="material-symbols-outlined text-primary text-2xl">

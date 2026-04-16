@@ -14,6 +14,7 @@ import Saved from './pages/Saved';
 import History from './pages/History';
 import Issues from './pages/Issues';
 import DeepAnalysis from './pages/DeepAnalysis';
+import AnalysisResult from './pages/AnalysisResult';
 import BulkAnalysis from './pages/BulkAnalysis';
 import Candidates from './pages/Candidates';
 import CandidateDetail from './pages/CandidateDetail';
@@ -62,6 +63,7 @@ function App() {
             <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
             <Route path="/issues" element={<ProtectedRoute><Issues /></ProtectedRoute>} />
             <Route path="/deep-analysis" element={<ProtectedRoute><DeepAnalysis /></ProtectedRoute>} />
+            <Route path="/analysis-result" element={<ProtectedRoute><AnalysisResult /></ProtectedRoute>} />
             <Route path="/bulk-analysis" element={<ProtectedRoute><BulkAnalysis /></ProtectedRoute>} />
             <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} />
             <Route path="/candidates/:username" element={<ProtectedRoute><CandidateDetail /></ProtectedRoute>} />

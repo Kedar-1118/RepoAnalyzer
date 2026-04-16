@@ -45,11 +45,26 @@ class RecommendationController {
         if (cachedRecommendations && cachedRecommendations.length > 0) {
           console.log(`[RecommendationController] Returning ${cachedRecommendations.length} cached recommendations`);
           return res.json({
-            recommendations: cachedRecommendations.map(r => ({
-              ...r.recommendation_data,
-              matchScore: r.match_score,
-              cachedAt: r.created_at
-            })),
+            recommendations: cachedRecommendations.map(r => {
+              const d = r.recommendation_data;
+              return {
+                id: d.id,
+                name: d.name,
+                fullName: d.full_name || d.fullName,
+                description: d.description,
+                language: d.language,
+                stargazersCount: d.stargazers_count || d.stargazersCount,
+                forksCount: d.forks_count || d.forksCount,
+                openIssuesCount: d.open_issues_count || d.openIssuesCount,
+                topics: d.topics,
+                htmlUrl: d.html_url || d.htmlUrl,
+                matchScore: r.match_score,
+                scoreBreakdown: d.scoreBreakdown,
+                updatedAt: d.updated_at || d.updatedAt,
+                owner: d.owner,
+                cachedAt: r.created_at
+              };
+            }),
             cached: true
           });
         }

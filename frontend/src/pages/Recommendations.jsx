@@ -126,7 +126,7 @@ const Recommendations = () => {
              <RepoCard 
                 key={i} 
                 repo={repo} 
-                onClick={() => navigate('/deep-analysis', { state: { repoUrl: repo.htmlUrl } })} 
+                onClick={() => navigate('/deep-analysis', { state: { repoUrl: repo.htmlUrl || repo.html_url || `https://github.com/${repo.fullName || repo.full_name}` } })} 
              />
           ))}
 
