@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRecruiterProfile } from '../../hooks/useApi';
-import html2pdf from 'html2pdf.js';
+// import html2pdf from 'html2pdf.js';
 
 const Reports = () => {
     const { username } = useParams();
@@ -12,11 +12,11 @@ const Reports = () => {
     const handleExport = () => {
         const element = document.getElementById('report-content');
         const opt = {
-            margin:       0.5,
-            filename:     `${username}_evaluation_report.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2 },
-            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            margin: 0.5,
+            filename: `${username}_evaluation_report.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
         };
         html2pdf().from(element).set(opt).save();
     };
@@ -50,7 +50,7 @@ const Reports = () => {
                         Technical Evaluation Report
                     </p>
                 </div>
-                <button 
+                <button
                     onClick={handleExport}
                     data-html2canvas-ignore="true"
                     className="print:hidden bg-slate-900 text-white px-6 py-2 rounded-full text-xs font-black tracking-widest uppercase flex items-center gap-2 hover:bg-slate-700 transition"
@@ -116,9 +116,9 @@ const Reports = () => {
                     Generated via OpenPulse AI Engine
                 </p>
                 <div className="mt-4 flex justify-center gap-4 print:hidden" data-html2canvas-ignore="true">
-                     <button onClick={() => navigate(-1)} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold uppercase tracking-widest underline">
+                    <button onClick={() => navigate(-1)} className="text-indigo-600 hover:text-indigo-800 text-xs font-bold uppercase tracking-widest underline">
                         Return
-                     </button>
+                    </button>
                 </div>
             </div>
         </div>
