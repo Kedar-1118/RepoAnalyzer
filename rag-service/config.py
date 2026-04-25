@@ -23,6 +23,8 @@ class Settings:
         self.CACHE_TTL_DAYS: int = int(os.getenv("CACHE_TTL_DAYS", "7"))
         self.GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
         self.OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "gemma4")
+        self.OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
         # Derived settings
         self.BASE_DIR = Path(__file__).parent
@@ -59,6 +61,8 @@ class Settings:
             raise ValueError("GOOGLE_API_KEY is required when LLM_PROVIDER is 'gemini'")
         if self.LLM_PROVIDER == "openai" and not self.OPENAI_API_KEY:
             raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER is 'openai'")
+        if self.LLM_PROVIDER == "ollama" and not self.OLLAMA_BASE_URL:
+            raise ValueError("OLLAMA_BASE_URL is required when LLM_PROVIDER is 'ollama'")
 
 
 

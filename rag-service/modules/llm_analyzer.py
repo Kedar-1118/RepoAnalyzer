@@ -51,6 +51,15 @@ def get_llm():
             temperature=0.3,
             max_tokens=8192,
         )
+    elif settings.LLM_PROVIDER == "ollama":
+        from langchain_community.chat_models import ChatOllama
+        return ChatOllama(
+            model=settings.OLLAMA_MODEL,
+            base_url=settings.OLLAMA_BASE_URL,
+            temperature=0.3,
+            # Note: Ollama handles max tokens differently, usually via num_predict if needed,
+            # but we can omit it to use the model's default large context limit.
+        )
     else:
         raise ValueError(f"Unsupported LLM provider: {settings.LLM_PROVIDER}")
 

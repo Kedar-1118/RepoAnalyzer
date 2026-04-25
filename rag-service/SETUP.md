@@ -39,9 +39,10 @@ Follow these steps to get the **RAG Repository Analyzer** up and running on your
     ```
 
 2.  **Edit the `.env` file** and provide your API keys:
-    *   `LLM_PROVIDER`: Set to `gemini` or `openai`.
-    *   `GOOGLE_API_KEY`: Your Gemini API key.
-    *   `OPENAI_API_KEY`: Your OpenAI API key.
+    *   `LLM_PROVIDER`: Set to `gemini`, `openai`, or `ollama`.
+    *   If using `gemini`, ensure `GOOGLE_API_KEY` is set.
+    *   If using `openai`, ensure `OPENAI_API_KEY` is set.
+    *   If using `ollama`, set `OLLAMA_MODEL` (e.g., `gemma4`) and `OLLAMA_BASE_URL` (default: `http://localhost:11434`).
     *   `GITHUB_TOKEN`: Your GitHub Personal Access Token.
 
 ## 🚀 Running the Application
