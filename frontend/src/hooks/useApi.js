@@ -35,6 +35,12 @@ export const useLogout = () => {
             queryClient.clear();
             window.location.href = '/';
         },
+        onError: () => {
+            // Even if the backend call fails, clear local state so the user isn't stuck
+            logout();
+            queryClient.clear();
+            window.location.href = '/';
+        },
     });
 };
 

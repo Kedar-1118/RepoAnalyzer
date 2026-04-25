@@ -3,6 +3,15 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/database');
 const githubConfig = require('../config/github');
 
+// Cookie options — shared between set & clear
+const COOKIE_OPTIONS = {
+  httpOnly: true,                                       // JS cannot read it
+  secure: process.env.NODE_ENV === 'production',        // HTTPS only in prod
+  sameSite: 'lax',                                      // CSRF protection
+  path: '/',                                            // available on all routes
+  maxAge: 7 * 24 * 60 * 60 * 1000,                     // 7 days (matches JWT expiry)
+};
+
 class AuthController {
   async initiateGitHubAuth(req, res) {
     try {
@@ -132,7 +141,10 @@ class AuthController {
         { expiresIn: '7d' }
       );
 
-      // Prepare user data for frontend
+      // 7. Set httpOnly cookie with the JWT
+      res.cookie('session_token', jwtToken, COOKIE_OPTIONS);
+
+      // Prepare user data for frontend (sent via URL so the SPA can hydrate state)
       const userData = {
         id: user.id,
         github_id: user.github_id,
@@ -145,7 +157,7 @@ class AuthController {
 
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       const encodedUserData = encodeURIComponent(JSON.stringify(userData));
-      res.redirect(`${frontendUrl}/auth/callback?token=${jwtToken}&user=${encodedUserData}`);
+      res.redirect(`${frontendUrl}/auth/callback?user=${encodedUserData}`);
     } catch (error) {
       console.error('GitHub callback error:', error);
       if (error.response) {
@@ -161,6 +173,13 @@ class AuthController {
 
   async logout(req, res) {
     try {
+      // Clear the session cookie — this is the actual logout
+      res.clearCookie('session_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
       res.json({ message: 'Logged out successfully' });
     } catch (error) {
       res.status(500).json({ error: 'Logout failed' });

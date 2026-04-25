@@ -11,7 +11,6 @@ const AuthCallback = () => {
 
     useEffect(() => {
         const handleAuth = async () => {
-            const token = searchParams.get('token');
             const userData = searchParams.get('user');
             const errorMsg = searchParams.get('error');
 
@@ -21,29 +20,21 @@ const AuthCallback = () => {
                 return;
             }
 
-            if (token) {
-                try {
-                    if (userData) {
-                        // User data provided in URL
-                        const user = JSON.parse(decodeURIComponent(userData));
-                        setAuth(user, token);
-                        navigate(user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
-                    } else {
-                        // Only token provided, fetch user data from backend
-                        // Temporarily set token so apiClient can use it
-                        setAuth(null, token);
-
-                        const data = await authService.verifyToken();
-                        setAuth(data.user, token);
-                        navigate(data.user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
-                    }
-                } catch (err) {
-                    console.error('Auth error:', err);
-                    setError('Failed to complete authentication');
-                    setTimeout(() => navigate('/login'), 3000);
+            try {
+                if (userData) {
+                    // User data provided in URL — session cookie was already set by the backend redirect
+                    const user = JSON.parse(decodeURIComponent(userData));
+                    setAuth(user);
+                    navigate(user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
+                } else {
+                    // No user data in URL — verify the cookie-based session with the backend
+                    const data = await authService.verifyToken();
+                    setAuth(data.user);
+                    navigate(data.user?.role === 'recruiter' ? '/recruiter/dashboard' : '/dashboard');
                 }
-            } else {
-                setError('Missing authentication token');
+            } catch (err) {
+                console.error('Auth error:', err);
+                setError('Failed to complete authentication');
                 setTimeout(() => navigate('/login'), 3000);
             }
         };
