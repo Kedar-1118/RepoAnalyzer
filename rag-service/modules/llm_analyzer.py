@@ -52,13 +52,11 @@ def get_llm():
             max_tokens=8192,
         )
     elif settings.LLM_PROVIDER == "ollama":
-        from langchain_community.chat_models import ChatOllama
+        from langchain_ollama import ChatOllama
         return ChatOllama(
             model=settings.OLLAMA_MODEL,
             base_url=settings.OLLAMA_BASE_URL,
             temperature=0.3,
-            # Note: Ollama handles max tokens differently, usually via num_predict if needed,
-            # but we can omit it to use the model's default large context limit.
         )
     else:
         raise ValueError(f"Unsupported LLM provider: {settings.LLM_PROVIDER}")
@@ -101,8 +99,14 @@ def analyze_repository(
             else:
                 response_text = str(content)
 
+            # Log raw response for debugging
+            logger.info(f"Raw LLM response ({len(response_text)} chars): {response_text[:500]}")
+
             # Parse JSON from response
             result = _parse_json_response(response_text)
+
+            # Normalize alternative key names to expected schema
+            _normalize_response(result)
 
             # Validate structure
             _validate_response(result)
@@ -112,6 +116,7 @@ def analyze_repository(
 
         except (json.JSONDecodeError, ValueError) as e:
             logger.warning(f"Attempt {attempt + 1} failed: {e}")
+            logger.warning(f"Raw response was: {response_text[:1000]}")
             if attempt == max_retries:
                 logger.error("All LLM attempts failed, returning fallback response")
                 return _create_fallback_response(metadata, str(e))
@@ -143,6 +148,80 @@ def _parse_json_response(text: str) -> dict:
 
     json_str = text[start:end]
     return json.loads(json_str)
+
+
+def _normalize_response(result: dict) -> None:
+    """Normalize alternative key names to the expected schema.
+
+    Some LLMs (especially local models like gemma4) return correct data but
+    under slightly different key names.  This maps them to the canonical keys
+    so the validator doesn't overwrite real data with empty defaults.
+    """
+
+    # ── Simple key aliases ──────────────────────────────────────────────
+    KEY_ALIASES = {
+        "repository_summary": ["summary", "repo_summary", "overview", "project_summary"],
+        "technology_stack": ["tech_stack", "technologies", "stack", "technologies_used"],
+        "architecture_pattern": ["architecture", "architectural_pattern", "arch_pattern", "pattern"],
+        "architecture_explanation": ["arch_explanation", "architecture_description"],
+        "code_quality_score": ["quality_score", "code_quality", "quality"],
+        "code_quality_explanation": ["quality_explanation", "quality_justification"],
+        "complexity_level": ["complexity", "difficulty", "difficulty_level"],
+        "required_skills": ["skills", "skills_required", "needed_skills"],
+        "contribution_opportunities": ["contributions", "opportunities", "contribution_areas"],
+        "skill_match_score": ["match_score", "skill_match"],
+        "skill_match_explanation": ["match_explanation"],
+        "developer_technical_score": ["dev_score", "developer_score", "technical_score"],
+        "repository_score": ["repo_score", "overall_score", "score"],
+        "analysis_explanation": ["explanation", "analysis", "detailed_analysis", "narrative"],
+    }
+
+    for canonical, aliases in KEY_ALIASES.items():
+        if canonical not in result or result[canonical] in (None, "", [], {}, 0, "Unknown", "Analysis incomplete"):
+            for alias in aliases:
+                if alias in result and result[alias] not in (None, "", [], {}, 0):
+                    logger.info(f"Normalizing key: '{alias}' -> '{canonical}'")
+                    result[canonical] = result[alias]
+                    break
+
+    # ── Extract technology_stack from nested "components" structure ──────
+    if (not result.get("technology_stack") or result["technology_stack"] == []) and "components" in result:
+        techs = set()
+        for comp in result["components"]:
+            if isinstance(comp, dict):
+                for tech in comp.get("key_technologies", []):
+                    techs.add(tech)
+                # Also grab description-derived info
+                desc = comp.get("description", "")
+                name = comp.get("name", "")
+                if name:
+                    techs.add(name)
+        if techs:
+            result["technology_stack"] = sorted(techs)
+            logger.info(f"Extracted technology_stack from 'components': {result['technology_stack']}")
+
+    # ── Extract architecture_pattern from "architectural_patterns" list ──
+    if (not result.get("architecture_pattern") or result["architecture_pattern"] == "Unknown") \
+            and "architectural_patterns" in result:
+        patterns = result["architectural_patterns"]
+        if isinstance(patterns, list) and patterns:
+            result["architecture_pattern"] = ", ".join(patterns)
+            logger.info(f"Extracted architecture_pattern from list: {result['architecture_pattern']}")
+
+    # ── Extract required_skills from components if empty ─────────────────
+    if not result.get("required_skills") and "components" in result:
+        skills = set()
+        for comp in result["components"]:
+            if isinstance(comp, dict):
+                for tech in comp.get("key_technologies", []):
+                    skills.add(tech)
+        if skills:
+            result["required_skills"] = sorted(skills)
+
+    # ── Extract contribution_opportunities from "potential_improvements" ──
+    if not result.get("contribution_opportunities") and "potential_improvements" in result:
+        result["contribution_opportunities"] = result["potential_improvements"]
+        logger.info("Mapped 'potential_improvements' -> 'contribution_opportunities'")
 
 
 def _validate_response(result: dict) -> None:

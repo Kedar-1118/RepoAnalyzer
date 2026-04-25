@@ -31,8 +31,8 @@ def parse_repo_url(repo_url: str) -> tuple[str, str]:
     """
     # Handle various GitHub URL formats
     patterns = [
-        r"github\.com/([^/]+)/([^/\s.]+?)(?:\.git)?$",
-        r"github\.com/([^/]+)/([^/\s.]+?)/?$",
+        r"github\.com/([^/]+)/([^/\s]+?)(?:\.git)?$",
+        r"github\.com/([^/]+)/([^/\s]+?)/?$",
     ]
     for pattern in patterns:
         match = re.search(pattern, repo_url.strip())

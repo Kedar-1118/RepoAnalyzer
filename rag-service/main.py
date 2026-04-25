@@ -187,6 +187,13 @@ async def analyze_repo(request: AnalyzeRequest):
             developer_skills=request.developer_skills,
         )
 
+        # ── DEBUG: Log the raw LLM analysis result ──
+        import json as _json
+        logger.info("=" * 60)
+        logger.info("RAW LLM ANALYSIS RESULT:")
+        logger.info(_json.dumps(analysis, indent=2, default=str)[:3000])
+        logger.info("=" * 60)
+
         # Post-process: recalculate scores if developer skills provided
         if request.developer_skills and analysis.get("required_skills"):
             skill_match = compute_skill_match(
@@ -227,12 +234,25 @@ async def analyze_repo(request: AnalyzeRequest):
             "analysis_explanation": analysis.get("analysis_explanation", ""),
             "metadata": metadata,
         }
-        store_analysis(
-            repo_key,
-            request.developer_skills,
-            response_data,
-            metadata.get("pushed_at", "")
+
+        # ── DEBUG: Log the final response being sent ──
+        logger.info("FINAL RESPONSE DATA (first 2000 chars):")
+        logger.info(_json.dumps(response_data, indent=2, default=str)[:2000])
+
+        # Only cache if the analysis looks like a real result (not a fallback)
+        is_real_result = (
+            analysis.get("code_quality_score", 0) > 0
+            or len(analysis.get("technology_stack", [])) > 0
         )
+        if is_real_result:
+            store_analysis(
+                repo_key,
+                request.developer_skills,
+                response_data,
+                metadata.get("pushed_at", "")
+            )
+        else:
+            logger.warning("Skipping cache — analysis appears to be a fallback response")
 
         return AnalyzeResponse(
             **response_data,
