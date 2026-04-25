@@ -160,20 +160,49 @@ def _normalize_response(result: dict) -> None:
 
     # ── Simple key aliases ──────────────────────────────────────────────
     KEY_ALIASES = {
-        "repository_summary": ["summary", "repo_summary", "overview", "project_summary"],
-        "technology_stack": ["tech_stack", "technologies", "stack", "technologies_used"],
-        "architecture_pattern": ["architecture", "architectural_pattern", "arch_pattern", "pattern"],
-        "architecture_explanation": ["arch_explanation", "architecture_description"],
-        "code_quality_score": ["quality_score", "code_quality", "quality"],
-        "code_quality_explanation": ["quality_explanation", "quality_justification"],
-        "complexity_level": ["complexity", "difficulty", "difficulty_level"],
-        "required_skills": ["skills", "skills_required", "needed_skills"],
-        "contribution_opportunities": ["contributions", "opportunities", "contribution_areas"],
+        "repository_summary": [
+            "summary", "repo_summary", "overview", "project_summary",
+        ],
+        "technology_stack": [
+            "tech_stack", "technologies", "stack", "technologies_used",
+            "technology_stack_list",
+        ],
+        "architecture_pattern": [
+            "architecture", "architectural_pattern", "arch_pattern", "pattern",
+        ],
+        "architecture_explanation": [
+            "arch_explanation", "architecture_description",
+            "architecture_pattern_description",
+        ],
+        "code_quality_score": [
+            "quality_score", "code_quality", "quality", "complexity_score",
+        ],
+        "code_quality_explanation": [
+            "quality_explanation", "quality_justification",
+            "complexity_level_description",
+        ],
+        "complexity_level": [
+            "complexity", "difficulty", "difficulty_level",
+        ],
+        "required_skills": [
+            "skills", "skills_required", "needed_skills",
+            "developer_skills_required", "developer_skills_required_list",
+        ],
+        "contribution_opportunities": [
+            "contributions", "opportunities", "contribution_areas",
+            "potential_improvements",
+        ],
         "skill_match_score": ["match_score", "skill_match"],
         "skill_match_explanation": ["match_explanation"],
-        "developer_technical_score": ["dev_score", "developer_score", "technical_score"],
-        "repository_score": ["repo_score", "overall_score", "score"],
-        "analysis_explanation": ["explanation", "analysis", "detailed_analysis", "narrative"],
+        "developer_technical_score": [
+            "dev_score", "developer_score", "technical_score",
+        ],
+        "repository_score": [
+            "repo_score", "overall_score", "score",
+        ],
+        "analysis_explanation": [
+            "explanation", "detailed_analysis", "narrative",
+        ],
     }
 
     for canonical, aliases in KEY_ALIASES.items():
@@ -184,6 +213,59 @@ def _normalize_response(result: dict) -> None:
                     result[canonical] = result[alias]
                     break
 
+    # ── Extract from nested "repository_analysis" object ────────────────
+    repo_analysis = result.get("repository_analysis", {})
+    if isinstance(repo_analysis, dict):
+        # summary
+        if (not result.get("repository_summary") or result["repository_summary"] == "Analysis incomplete"):
+            s = repo_analysis.get("summary", "")
+            if s:
+                result["repository_summary"] = s
+                logger.info("Extracted repository_summary from repository_analysis.summary")
+
+        # architecture
+        if not result.get("architecture_explanation"):
+            a = repo_analysis.get("architecture", "")
+            if a:
+                result["architecture_explanation"] = a
+
+        # analysis_explanation from strengths + weaknesses
+        if not result.get("analysis_explanation") or result["analysis_explanation"] == "Partial analysis — some fields could not be determined.":
+            parts = []
+            strengths = repo_analysis.get("strengths", [])
+            weaknesses = repo_analysis.get("weaknesses", [])
+            if strengths:
+                parts.append("Strengths: " + "; ".join(strengths))
+            if weaknesses:
+                parts.append("Weaknesses: " + "; ".join(weaknesses))
+            if parts:
+                result["analysis_explanation"] = ". ".join(parts) + "."
+                logger.info("Built analysis_explanation from repository_analysis strengths/weaknesses")
+
+        # contribution_opportunities from weaknesses
+        if not result.get("contribution_opportunities"):
+            weaknesses = repo_analysis.get("weaknesses", [])
+            if weaknesses:
+                result["contribution_opportunities"] = weaknesses
+                logger.info("Mapped repository_analysis.weaknesses -> contribution_opportunities")
+
+    # ── Extract from nested "repository_metadata" object ────────────────
+    repo_meta = result.get("repository_metadata", {})
+    if isinstance(repo_meta, dict):
+        if not result.get("code_quality_score") or result["code_quality_score"] == 0:
+            score = repo_meta.get("complexity_score", 0)
+            if score:
+                result["code_quality_score"] = score
+                logger.info(f"Extracted code_quality_score from repository_metadata.complexity_score: {score}")
+
+    # ── Extract from nested "repository_analysis_details" object ────────
+    details = result.get("repository_analysis_details", {})
+    if isinstance(details, dict):
+        if not result.get("architecture_explanation"):
+            desc = details.get("architecture_pattern_description", "")
+            if desc:
+                result["architecture_explanation"] = desc
+
     # ── Extract technology_stack from nested "components" structure ──────
     if (not result.get("technology_stack") or result["technology_stack"] == []) and "components" in result:
         techs = set()
@@ -191,8 +273,6 @@ def _normalize_response(result: dict) -> None:
             if isinstance(comp, dict):
                 for tech in comp.get("key_technologies", []):
                     techs.add(tech)
-                # Also grab description-derived info
-                desc = comp.get("description", "")
                 name = comp.get("name", "")
                 if name:
                     techs.add(name)
@@ -208,7 +288,7 @@ def _normalize_response(result: dict) -> None:
             result["architecture_pattern"] = ", ".join(patterns)
             logger.info(f"Extracted architecture_pattern from list: {result['architecture_pattern']}")
 
-    # ── Extract required_skills from components if empty ─────────────────
+    # ── Extract required_skills from components if still empty ───────────
     if not result.get("required_skills") and "components" in result:
         skills = set()
         for comp in result["components"]:
@@ -218,10 +298,11 @@ def _normalize_response(result: dict) -> None:
         if skills:
             result["required_skills"] = sorted(skills)
 
-    # ── Extract contribution_opportunities from "potential_improvements" ──
-    if not result.get("contribution_opportunities") and "potential_improvements" in result:
-        result["contribution_opportunities"] = result["potential_improvements"]
-        logger.info("Mapped 'potential_improvements' -> 'contribution_opportunities'")
+    # ── Ensure repository_score has a value from code_quality_score ──────
+    if (not result.get("repository_score") or result["repository_score"] == 0) \
+            and result.get("code_quality_score", 0) > 0:
+        result["repository_score"] = result["code_quality_score"]
+        logger.info(f"Set repository_score = code_quality_score = {result['repository_score']}")
 
 
 def _validate_response(result: dict) -> None:
