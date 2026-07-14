@@ -8,7 +8,7 @@ const navItems = [
   { path: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
   { path: '/deep-analysis', icon: 'analytics', label: 'Repo Analyzer' },
   { path: '/recommendations', icon: 'handshake', label: 'Matches' },
-  { path: '/candidates', icon: 'group', label: 'Candidates' },
+  // { path: '/candidates', icon: 'group', label: 'Candidates' },
   { path: '/saved', icon: 'bookmark', label: 'Bookmarks' },
   { path: '/profile', icon: 'person', label: 'Profile' },
 ];

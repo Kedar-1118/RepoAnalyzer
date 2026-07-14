@@ -85,7 +85,7 @@ function App() {
             <Route path="/deep-analysis" element={<ProtectedRoute><DeepAnalysis /></ProtectedRoute>} />
             <Route path="/analysis-result" element={<ProtectedRoute><AnalysisResult /></ProtectedRoute>} />
             <Route path="/bulk-analysis" element={<ProtectedRoute><BulkAnalysis /></ProtectedRoute>} />
-            <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} />
+            {/* <Route path="/candidates" element={<ProtectedRoute><Candidates /></ProtectedRoute>} /> */}
             <Route path="/candidates/:username" element={<ProtectedRoute><CandidateDetail /></ProtectedRoute>} />
 
             {/* Recruiter Routes */}
